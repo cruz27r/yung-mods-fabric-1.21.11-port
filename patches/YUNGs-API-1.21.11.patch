@@ -1,0 +1,1588 @@
+From 782bab5497cff37e793b1af8731085314951fa3a Mon Sep 17 00:00:00 2001
+From: port <port@example.invalid>
+Date: Wed, 25 Nov 2026 08:04:54 -0500
+Subject: [PATCH] Port YUNGs-API to Minecraft 1.21.11 (Fabric)
+
+---
+ .../yungsapi/api/YungJigsawManager.java       |  4 +--
+ .../api/autoregister/AutoRegisterBlock.java   | 10 +++---
+ .../autoregister/AutoRegisterCreativeTab.java | 10 +++---
+ .../autoregister/AutoRegisterEntityType.java  |  8 ++---
+ .../world/randomize/BlockStateRandomizer.java | 10 +++---
+ .../api/world/randomize/ItemRandomizer.java   | 10 +++---
+ .../autoregister/AutoRegisterField.java       |  8 ++---
+ .../minecraft/yungsapi/codec/CodecHelper.java |  4 +--
+ .../yungsapi/json/BlockStateAdapter.java      |  4 +--
+ .../minecraft/yungsapi/json/ItemAdapter.java  |  4 +--
+ .../mixin/accessor/BeardifierAccessor.java    | 14 +++++---
+ .../minecraft/yungsapi/module/TagModule.java  | 10 +++---
+ .../yungsapi/world/banner/Banner.java         |  2 +-
+ .../world/spawner/MobSpawnerData.java         |  8 ++---
+ .../world/structure/YungJigsawStructure.java  |  8 ++---
+ .../structure/action/StructureActionType.java | 12 +++----
+ .../structure/action/TransformAction.java     | 16 +++++-----
+ .../PieceInHorizontalDirectionCondition.java  | 12 +++----
+ .../condition/PieceInRangeCondition.java      | 12 +++----
+ .../condition/StructureConditionType.java     | 12 +++----
+ .../world/structure/jigsaw/JigsawManager.java | 14 ++++----
+ .../world/structure/jigsaw/PieceEntry.java    |  4 +--
+ .../assembler/JigsawStructureAssembler.java   | 14 ++++----
+ .../MaxCountLegacySinglePoolElement.java      |  4 +--
+ .../element/MaxCountSinglePoolElement.java    |  4 +--
+ .../element/YungJigsawFeatureElement.java     |  2 --
+ .../jigsaw/element/YungJigsawPoolElement.java |  2 --
+ .../element/YungJigsawSinglePoolElement.java  | 32 +++++++++----------
+ .../StructureTargetSelectorType.java          | 12 +++----
+ .../EnhancedTerrainAdaptation.java            |  2 +-
+ .../EnhancedTerrainAdaptationType.java        | 12 +++----
+ .../aquiferoverride/AquiferOverrideType.java  | 12 +++----
+ .../beardifier/EnhancedBeardifierHelper.java  |  2 +-
+ .../mixin/EntityProcessorMixinFabric.java     |  4 +--
+ .../yungsapi/module/BlockModuleFabric.java    | 12 +++----
+ .../yungsapi/module/ItemModuleFabric.java     |  4 +--
+ .../services/FabricAutoRegisterHelper.java    |  4 +--
+ .../processor/StructureProcessingContext.java |  2 +-
+ .../yungsapi/module/BlockModuleNeoForge.java  | 14 ++++----
+ .../services/NeoForgeAutoRegisterHelper.java  |  4 +--
+ build.gradle                                  |  2 +-
+ gradle.properties                             | 16 +++++-----
+ gradle/wrapper/gradle-wrapper.properties      |  2 +-
+ settings.gradle                               |  2 +-
+ 44 files changed, 179 insertions(+), 181 deletions(-)
+
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/YungJigsawManager.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/YungJigsawManager.java
+index e22ad8c..f49217d 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/YungJigsawManager.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/YungJigsawManager.java
+@@ -4,7 +4,7 @@ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.JigsawManager
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.element.YungJigsawPoolElement;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Holder;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.level.levelgen.Heightmap;
+ import net.minecraft.world.level.levelgen.structure.Structure;
+ import net.minecraft.world.level.levelgen.structure.pools.DimensionPadding;
+@@ -62,7 +62,7 @@ public class YungJigsawManager {
+     public static Optional<Structure.GenerationStub> assembleJigsawStructure(
+             Structure.GenerationContext generationContext,
+             Holder<StructureTemplatePool> startPool,
+-            Optional<ResourceLocation> startJigsawNameOptional,
++            Optional<Identifier> startJigsawNameOptional,
+             int maxDepth,
+             BlockPos startPos,
+             boolean useExpansionHack,
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterBlock.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterBlock.java
+index 81f2264..49646c8 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterBlock.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterBlock.java
+@@ -70,7 +70,7 @@ public class AutoRegisterBlock extends AutoRegisterEntry<Block> {
+ 
+     /**
+      * Indicates that this block will also have a corresponding stairs block registered.
+-     * The ResourceLocation for the stairs block will be the same as the original block, but with "_stairs" appended.
++     * The Identifier for the stairs block will be the same as the original block, but with "_stairs" appended.
+      */
+     public AutoRegisterBlock withStairs() {
+         this.hasStairs = true;
+@@ -79,7 +79,7 @@ public class AutoRegisterBlock extends AutoRegisterEntry<Block> {
+ 
+     /**
+      * Indicates that this block will also have a corresponding slab block registered.
+-     * The ResourceLocation for the slab block will be the same as the original block, but with "_slab" appended.
++     * The Identifier for the slab block will be the same as the original block, but with "_slab" appended.
+      */
+     public AutoRegisterBlock withSlab() {
+         this.hasSlab = true;
+@@ -88,7 +88,7 @@ public class AutoRegisterBlock extends AutoRegisterEntry<Block> {
+ 
+     /**
+      * Indicates that this block will also have a corresponding fence block registered.
+-     * The ResourceLocation for the fence block will be the same as the original block, but with "_fence" appended.
++     * The Identifier for the fence block will be the same as the original block, but with "_fence" appended.
+      */
+     public AutoRegisterBlock withFence() {
+         this.hasFence = true;
+@@ -97,7 +97,7 @@ public class AutoRegisterBlock extends AutoRegisterEntry<Block> {
+ 
+     /**
+      * Indicates that this block will also have a corresponding fence gate block registered.
+-     * The ResourceLocation for the fence gate block will be the same as the original block, but with "_fence_gate" appended.
++     * The Identifier for the fence gate block will be the same as the original block, but with "_fence_gate" appended.
+      * @param woodType the {@link WoodType} for the fence gate. This determines the sound played when the fence gate is opened/closed.
+      */
+     public AutoRegisterBlock withFenceGate(WoodType woodType) {
+@@ -148,7 +148,7 @@ public class AutoRegisterBlock extends AutoRegisterEntry<Block> {
+ 
+     /**
+      * Indicates that this block will also have a corresponding wall block registered.
+-     * The ResourceLocation for the wall block will be the same as the original block, but with "_wall" appended.
++     * The Identifier for the wall block will be the same as the original block, but with "_wall" appended.
+      */
+     public AutoRegisterBlock withWall() {
+         this.hasWall = true;
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterCreativeTab.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterCreativeTab.java
+index 4bb9824..4d05508 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterCreativeTab.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterCreativeTab.java
+@@ -2,7 +2,7 @@ package com.yungnickyoung.minecraft.yungsapi.api.autoregister;
+ 
+ import com.yungnickyoung.minecraft.yungsapi.autoregister.AutoRegisterEntry;
+ import net.minecraft.network.chat.Component;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.item.CreativeModeTab;
+ import net.minecraft.world.item.ItemStack;
+ 
+@@ -31,7 +31,7 @@ public class AutoRegisterCreativeTab extends AutoRegisterEntry<CreativeModeTab>
+     private final boolean showTitle;
+     private final boolean alignedRight;
+     private final CreativeModeTab.Type type;
+-    private final ResourceLocation backgroundTexture;
++    private final Identifier backgroundTexture;
+ 
+     /**
+      * Private constructor. Use {@link AutoRegisterCreativeTab.Builder} to create instances.
+@@ -85,7 +85,7 @@ public class AutoRegisterCreativeTab extends AutoRegisterEntry<CreativeModeTab>
+         return type;
+     }
+ 
+-    public ResourceLocation getBackgroundTexture() {
++    public Identifier getBackgroundTexture() {
+         return backgroundTexture;
+     }
+ 
+@@ -100,7 +100,7 @@ public class AutoRegisterCreativeTab extends AutoRegisterEntry<CreativeModeTab>
+         private boolean showTitle = true;
+         private boolean alignedRight = false;
+         private final CreativeModeTab.Type type = CreativeModeTab.Type.CATEGORY;
+-        private ResourceLocation backgroundTexture = CreativeModeTab.createTextureLocation("items");
++        private Identifier backgroundTexture = CreativeModeTab.createTextureLocation("items");
+ 
+         private Builder() {
+         }
+@@ -135,7 +135,7 @@ public class AutoRegisterCreativeTab extends AutoRegisterEntry<CreativeModeTab>
+             return this;
+         }
+ 
+-        public Builder backgroundTexture(ResourceLocation backgroundTexture) {
++        public Builder backgroundTexture(Identifier backgroundTexture) {
+             this.backgroundTexture = backgroundTexture;
+             return this;
+         }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterEntityType.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterEntityType.java
+index e0c2923..8adc479 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterEntityType.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/autoregister/AutoRegisterEntityType.java
+@@ -2,7 +2,7 @@ package com.yungnickyoung.minecraft.yungsapi.api.autoregister;
+ 
+ import com.google.common.collect.ImmutableSet;
+ import com.yungnickyoung.minecraft.yungsapi.autoregister.AutoRegisterEntry;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.core.registries.Registries;
+ import net.minecraft.resources.DependantName;
+ import net.minecraft.resources.ResourceKey;
+@@ -87,8 +87,8 @@ public class AutoRegisterEntityType<T extends Entity> extends AutoRegisterEntry<
+             this.canSpawnFarFromPlayer = mobCategory == MobCategory.CREATURE || mobCategory == MobCategory.MISC;
+             this.lootTable = resourceKey -> Optional.of(ResourceKey.create(
+                     Registries.LOOT_TABLE,
+-                    resourceKey.location().withPrefix("entities/")));
+-            this.descriptionId = resourceKey -> Util.makeDescriptionId("entity", resourceKey.location());
++                    resourceKey.identifier().withPrefix("entities/")));
++            this.descriptionId = resourceKey -> Util.makeDescriptionId("entity", resourceKey.identifier());
+         }
+ 
+         public static <T extends Entity> Builder<T> of(EntityType.EntityFactory<T> entityFactory, MobCategory mobCategory) {
+@@ -155,7 +155,7 @@ public class AutoRegisterEntityType<T extends Entity> extends AutoRegisterEntry<
+                     this.canSpawnFarFromPlayer, this.immuneTo, this.dimensions, this.spawnDimensionsScale,
+                     this.clientTrackingRange, this.updateInterval,
+                     this.descriptionId.get(resourceKey), this.lootTable.get(resourceKey),
+-                    this.requiredFeatures);
++                    this.requiredFeatures, true);
+         }
+     }
+ }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/world/randomize/BlockStateRandomizer.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/world/randomize/BlockStateRandomizer.java
+index 81492b3..c8af5f9 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/world/randomize/BlockStateRandomizer.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/world/randomize/BlockStateRandomizer.java
+@@ -6,7 +6,7 @@ import com.yungnickyoung.minecraft.yungsapi.YungsApiCommon;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.context.StructureContext;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.condition.StructureCondition;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.condition.StructureConditionType;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.nbt.CompoundTag;
+ import net.minecraft.nbt.ListTag;
+ import net.minecraft.util.RandomSource;
+@@ -69,14 +69,14 @@ public class BlockStateRandomizer {
+      * @param compoundTag The CompoundTag
+      */
+     public BlockStateRandomizer(CompoundTag compoundTag) {
+-        this.defaultBlockState = Block.BLOCK_STATE_REGISTRY.byId(compoundTag.getInt("defaultBlockStateId"));
++        this.defaultBlockState = Block.BLOCK_STATE_REGISTRY.byId(compoundTag.getIntOr("defaultBlockStateId", 0));
+         this.entries = new ArrayList<>();
+ 
+-        ListTag entriesTag = compoundTag.getList("entries", 10);
++        ListTag entriesTag = compoundTag.getListOrEmpty("entries");
+         entriesTag.forEach(entryTag -> {
+             CompoundTag entryCompoundTag = ((CompoundTag) entryTag);
+-            BlockState blockState = Block.BLOCK_STATE_REGISTRY.byId(entryCompoundTag.getInt("entryBlockStateId"));
+-            float chance = entryCompoundTag.getFloat("entryChance");
++            BlockState blockState = Block.BLOCK_STATE_REGISTRY.byId(entryCompoundTag.getIntOr("entryBlockStateId", 0));
++            float chance = entryCompoundTag.getFloatOr("entryChance", 0f);
+             this.addBlock(blockState, chance);
+         });
+     }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/world/randomize/ItemRandomizer.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/world/randomize/ItemRandomizer.java
+index 014bdbd..46e958b 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/world/randomize/ItemRandomizer.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/api/world/randomize/ItemRandomizer.java
+@@ -3,7 +3,7 @@ package com.yungnickyoung.minecraft.yungsapi.api.world.randomize;
+ import com.mojang.serialization.Codec;
+ import com.mojang.serialization.codecs.RecordCodecBuilder;
+ import com.yungnickyoung.minecraft.yungsapi.YungsApiCommon;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.core.registries.BuiltInRegistries;
+ import net.minecraft.nbt.CompoundTag;
+ import net.minecraft.nbt.ListTag;
+@@ -70,14 +70,14 @@ public class ItemRandomizer {
+      * @param compoundTag The CompoundTag
+      */
+     public ItemRandomizer(CompoundTag compoundTag) {
+-        this.defaultItem = BuiltInRegistries.ITEM.byId(compoundTag.getInt("defaultItemId"));
++        this.defaultItem = BuiltInRegistries.ITEM.byId(compoundTag.getIntOr("defaultItemId", 0));
+         this.entries = new ArrayList<>();
+ 
+-        ListTag entriesTag = compoundTag.getList("entries", 10);
++        ListTag entriesTag = compoundTag.getListOrEmpty("entries");
+         entriesTag.forEach(entryTag -> {
+             CompoundTag entryCompoundTag = ((CompoundTag) entryTag);
+-            Item item = BuiltInRegistries.ITEM.byId(entryCompoundTag.getInt("entryItemId"));
+-            float chance = entryCompoundTag.getFloat("entryChance");
++            Item item = BuiltInRegistries.ITEM.byId(entryCompoundTag.getIntOr("entryItemId", 0));
++            float chance = entryCompoundTag.getFloatOr("entryChance", 0f);
+             this.addItem(item, chance);
+         });
+     }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/autoregister/AutoRegisterField.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/autoregister/AutoRegisterField.java
+index 568c316..de266cd 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/autoregister/AutoRegisterField.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/autoregister/AutoRegisterField.java
+@@ -1,7 +1,7 @@
+ package com.yungnickyoung.minecraft.yungsapi.autoregister;
+ 
+ import com.yungnickyoung.minecraft.yungsapi.api.autoregister.AutoRegister;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import org.jetbrains.annotations.ApiStatus;
+ 
+ /**
+@@ -11,10 +11,10 @@ import org.jetbrains.annotations.ApiStatus;
+ @ApiStatus.Internal
+ public class AutoRegisterField {
+     public Object object;
+-    public ResourceLocation name;
++    public Identifier name;
+     public boolean processed;
+ 
+-    public AutoRegisterField(Object object, ResourceLocation name) {
++    public AutoRegisterField(Object object, Identifier name) {
+         this.object = object;
+         this.name = name;
+         this.processed = false;
+@@ -24,7 +24,7 @@ public class AutoRegisterField {
+         return this.object;
+     }
+ 
+-    public ResourceLocation name() {
++    public Identifier name() {
+         return this.name;
+     }
+ 
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/codec/CodecHelper.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/codec/CodecHelper.java
+index 94c6de3..e3f507d 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/codec/CodecHelper.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/codec/CodecHelper.java
+@@ -3,7 +3,7 @@ package com.yungnickyoung.minecraft.yungsapi.codec;
+ import com.mojang.serialization.Codec;
+ import com.yungnickyoung.minecraft.yungsapi.YungsApiCommon;
+ import net.minecraft.core.registries.BuiltInRegistries;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.level.block.Block;
+ import net.minecraft.world.level.block.Blocks;
+ import net.minecraft.world.level.block.state.BlockState;
+@@ -53,7 +53,7 @@ public class CodecHelper {
+         }
+ 
+         try {
+-            blockState = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockString)).get().value().defaultBlockState();
++            blockState = BuiltInRegistries.BLOCK.get(Identifier.parse(blockString)).get().value().defaultBlockState();
+         } catch (Exception e) {
+             YungsApiCommon.LOGGER.error("JSON: Unable to read block '{}': {}", blockString, e.toString());
+             YungsApiCommon.LOGGER.error("Using air instead...");
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/json/BlockStateAdapter.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/json/BlockStateAdapter.java
+index be92b90..0e4bf41 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/json/BlockStateAdapter.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/json/BlockStateAdapter.java
+@@ -6,7 +6,7 @@ import com.google.gson.stream.JsonToken;
+ import com.google.gson.stream.JsonWriter;
+ import com.yungnickyoung.minecraft.yungsapi.YungsApiCommon;
+ import net.minecraft.core.registries.BuiltInRegistries;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.level.block.Block;
+ import net.minecraft.world.level.block.Blocks;
+ import net.minecraft.world.level.block.state.BlockState;
+@@ -81,7 +81,7 @@ public class BlockStateAdapter extends TypeAdapter<BlockState> {
+         }
+ 
+         try {
+-            blockState = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockString)).get().value().defaultBlockState();
++            blockState = BuiltInRegistries.BLOCK.get(Identifier.parse(blockString)).get().value().defaultBlockState();
+         } catch (Exception e) {
+             YungsApiCommon.LOGGER.error("JSON: Unable to read block '{}': {}", blockString, e.toString());
+             YungsApiCommon.LOGGER.error("Using air instead...");
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/json/ItemAdapter.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/json/ItemAdapter.java
+index 54ef560..d67e173 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/json/ItemAdapter.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/json/ItemAdapter.java
+@@ -6,7 +6,7 @@ import com.google.gson.stream.JsonToken;
+ import com.google.gson.stream.JsonWriter;
+ import com.yungnickyoung.minecraft.yungsapi.YungsApiCommon;
+ import net.minecraft.core.registries.BuiltInRegistries;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.item.Item;
+ import net.minecraft.world.item.Items;
+ 
+@@ -38,7 +38,7 @@ public class ItemAdapter extends TypeAdapter<Item> {
+     public static Item resolveItem(String itemString) {
+         Item item;
+         try {
+-            item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemString)).get().value();
++            item = BuiltInRegistries.ITEM.get(Identifier.parse(itemString)).get().value();
+         } catch (Exception e) {
+             YungsApiCommon.LOGGER.error("JSON: Unable to read item '{}': {}", itemString, e.toString());
+             YungsApiCommon.LOGGER.error("Using air instead...");
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/mixin/accessor/BeardifierAccessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/mixin/accessor/BeardifierAccessor.java
+index d6cfa64..998d416 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/mixin/accessor/BeardifierAccessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/mixin/accessor/BeardifierAccessor.java
+@@ -1,6 +1,7 @@
+ package com.yungnickyoung.minecraft.yungsapi.mixin.accessor;
+ 
+-import it.unimi.dsi.fastutil.objects.ObjectListIterator;
++import java.util.List;
++import net.minecraft.world.level.levelgen.structure.BoundingBox;
+ import net.minecraft.world.level.levelgen.Beardifier;
+ import net.minecraft.world.level.levelgen.structure.pools.JigsawJunction;
+ import org.spongepowered.asm.mixin.Mixin;
+@@ -8,9 +9,12 @@ import org.spongepowered.asm.mixin.gen.Accessor;
+ 
+ @Mixin(Beardifier.class)
+ public interface BeardifierAccessor {
+-    @Accessor
+-    ObjectListIterator<Beardifier.Rigid> getPieceIterator();
++    @Accessor("pieces")
++    List<Beardifier.Rigid> getPieces();
+ 
+-    @Accessor
+-    ObjectListIterator<JigsawJunction> getJunctionIterator();
++    @Accessor("junctions")
++    List<JigsawJunction> getJunctions();
++
++    @Accessor("affectedBox")
++    BoundingBox getAffectedBox();
+ }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/TagModule.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/TagModule.java
+index ea7b7c4..e203054 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/TagModule.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/TagModule.java
+@@ -2,20 +2,20 @@ package com.yungnickyoung.minecraft.yungsapi.module;
+ 
+ import com.yungnickyoung.minecraft.yungsapi.YungsApiCommon;
+ import net.minecraft.core.registries.Registries;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.tags.TagKey;
+ import net.minecraft.world.level.levelgen.structure.Structure;
+ 
+ public class TagModule {
+     public static final TagKey<Structure> NO_DELTA = TagKey.create(Registries.STRUCTURE,
+-            ResourceLocation.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "remove_delta_feature_in"));
++            Identifier.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "remove_delta_feature_in"));
+ 
+     public static final TagKey<Structure> NO_BASALT = TagKey.create(Registries.STRUCTURE,
+-            ResourceLocation.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "remove_basalt_columns_feature_in"));
++            Identifier.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "remove_basalt_columns_feature_in"));
+ 
+     public static final TagKey<Structure> NO_MAGMA = TagKey.create(Registries.STRUCTURE,
+-            ResourceLocation.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "remove_magma_feature_in"));
++            Identifier.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "remove_magma_feature_in"));
+ 
+     public static final TagKey<Structure> NO_VINES = TagKey.create(Registries.STRUCTURE,
+-            ResourceLocation.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "remove_vines_feature_in"));
++            Identifier.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "remove_vines_feature_in"));
+ }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/banner/Banner.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/banner/Banner.java
+index 51569a2..cd6f3ea 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/banner/Banner.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/banner/Banner.java
+@@ -126,7 +126,7 @@ public class Banner {
+             // Construct list of patterns from args
+             patterns.forEach(pattern -> {
+                 CompoundTag patternNBT = new CompoundTag();
+-                patternNBT.putString("pattern", pattern.getPattern().location().toString());
++                patternNBT.putString("pattern", pattern.getPattern().identifier().toString());
+                 patternNBT.putString("color", pattern.getColor().getName());
+                 patternList.add(patternNBT);
+             });
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/spawner/MobSpawnerData.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/spawner/MobSpawnerData.java
+index 90a46f2..ce0a585 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/spawner/MobSpawnerData.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/spawner/MobSpawnerData.java
+@@ -3,7 +3,7 @@ package com.yungnickyoung.minecraft.yungsapi.world.spawner;
+ import net.minecraft.core.registries.BuiltInRegistries;
+ import net.minecraft.nbt.CompoundTag;
+ import net.minecraft.nbt.NbtOps;
+-import net.minecraft.util.random.SimpleWeightedRandomList;
++import net.minecraft.util.random.WeightedList;
+ import net.minecraft.world.entity.EntityType;
+ import net.minecraft.world.level.SpawnData;
+ 
+@@ -13,7 +13,7 @@ import net.minecraft.world.level.SpawnData;
+  */
+ public class MobSpawnerData {
+     public final int spawnDelay;
+-    public final SimpleWeightedRandomList<SpawnData> spawnPotentials;
++    public final WeightedList<SpawnData> spawnPotentials;
+     public final SpawnData nextSpawnData;
+     public final int minSpawnDelay;
+     public final int maxSpawnDelay;
+@@ -57,7 +57,7 @@ public class MobSpawnerData {
+ 
+     public static class Builder {
+         private int spawnDelay = 20;
+-        private SimpleWeightedRandomList<SpawnData> spawnPotentials = SimpleWeightedRandomList.empty();
++        private WeightedList<SpawnData> spawnPotentials = WeightedList.of();
+         private SpawnData nextSpawnData = new SpawnData();
+         private int minSpawnDelay = 200;
+         private int maxSpawnDelay = 800;
+@@ -75,7 +75,7 @@ public class MobSpawnerData {
+             return this;
+         }
+ 
+-        public Builder spawnPotentials(SimpleWeightedRandomList<SpawnData> spawnPotentials) {
++        public Builder spawnPotentials(WeightedList<SpawnData> spawnPotentials) {
+             this.spawnPotentials = spawnPotentials;
+             return this;
+         }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/YungJigsawStructure.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/YungJigsawStructure.java
+index b224df0..09f1240 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/YungJigsawStructure.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/YungJigsawStructure.java
+@@ -10,7 +10,7 @@ import com.yungnickyoung.minecraft.yungsapi.world.structure.terrainadaptation.ad
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.terrainadaptation.adaptations.EnhancedTerrainAdaptationType;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Holder;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.util.valueproviders.ConstantInt;
+ import net.minecraft.util.valueproviders.IntProvider;
+@@ -38,7 +38,7 @@ public class YungJigsawStructure extends Structure {
+                     .group(
+                             settingsCodec(builder),
+                             StructureTemplatePool.CODEC.fieldOf("start_pool").forGetter(structure -> structure.startPool),
+-                            ResourceLocation.CODEC.optionalFieldOf("start_jigsaw_name").forGetter(structure -> structure.startJigsawName),
++                            Identifier.CODEC.optionalFieldOf("start_jigsaw_name").forGetter(structure -> structure.startJigsawName),
+                             Codec.intRange(0, 128).fieldOf("size").forGetter(structure -> structure.maxDepth),
+                             HeightProvider.CODEC.fieldOf("start_height").forGetter(structure -> structure.startHeight),
+                             IntProvider.codec(0, 15).optionalFieldOf("x_offset_in_chunk", ConstantInt.of(0)).forGetter(structure -> structure.xOffsetInChunk),
+@@ -64,7 +64,7 @@ public class YungJigsawStructure extends Structure {
+      * If specified, the position of a matching jigsaw block will be used as the structure's starting position
+      * when generating the structure. This will become the target position of the /locate command.
+      */
+-    private final Optional<ResourceLocation> startJigsawName;
++    private final Optional<Identifier> startJigsawName;
+ 
+     /**
+      * The max depth, in Jigsaw pieces, the structure can generate before stopping.
+@@ -148,7 +148,7 @@ public class YungJigsawStructure extends Structure {
+     public YungJigsawStructure(
+             StructureSettings structureSettings,
+             Holder<StructureTemplatePool> startPool,
+-            Optional<ResourceLocation> startJigsawName,
++            Optional<Identifier> startJigsawName,
+             int maxDepth,
+             HeightProvider startHeight,
+             IntProvider xOffsetInChunk,
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/action/StructureActionType.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/action/StructureActionType.java
+index c1c34d0..a79ce65 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/action/StructureActionType.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/action/StructureActionType.java
+@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
+ import com.mojang.serialization.DataResult;
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.yungsapi.YungsApiCommon;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+@@ -16,11 +16,11 @@ import java.util.Optional;
+  */
+ public interface StructureActionType<C extends StructureAction> {
+     /* Utility maps for codecs. Simulates the approach vanilla registries use. */
+-    Map<ResourceLocation, StructureActionType<?>> ACTION_TYPES_BY_NAME = new HashMap<>();
+-    Map<StructureActionType<?>, ResourceLocation> NAME_BY_ACTION_TYPES = new HashMap<>();
++    Map<Identifier, StructureActionType<?>> ACTION_TYPES_BY_NAME = new HashMap<>();
++    Map<StructureActionType<?>, Identifier> NAME_BY_ACTION_TYPES = new HashMap<>();
+ 
+     /* Codecs */
+-    Codec<StructureActionType<?>> ACTION_TYPE_CODEC = ResourceLocation.CODEC
++    Codec<StructureActionType<?>> ACTION_TYPE_CODEC = Identifier.CODEC
+             .flatXmap(
+                     resourceLocation -> Optional.ofNullable(ACTION_TYPES_BY_NAME.get(resourceLocation))
+                             .map(DataResult::success)
+@@ -39,7 +39,7 @@ public interface StructureActionType<C extends StructureAction> {
+     /**
+      * Utility method for registering StructureActionTypes.
+      */
+-    static <C extends StructureAction> StructureActionType<C> register(ResourceLocation resourceLocation, MapCodec<C> codec) {
++    static <C extends StructureAction> StructureActionType<C> register(Identifier resourceLocation, MapCodec<C> codec) {
+         StructureActionType<C> actionType = () -> codec;
+         ACTION_TYPES_BY_NAME.put(resourceLocation, actionType);
+         NAME_BY_ACTION_TYPES.put(actionType, resourceLocation);
+@@ -50,7 +50,7 @@ public interface StructureActionType<C extends StructureAction> {
+      * Private utility method for registering StructureActionTypes native to YUNG's API.
+      */
+     private static <C extends StructureAction> StructureActionType<C> register(String id, MapCodec<C> codec) {
+-        return register(ResourceLocation.fromNamespaceAndPath(YungsApiCommon.MOD_ID, id), codec);
++        return register(Identifier.fromNamespaceAndPath(YungsApiCommon.MOD_ID, id), codec);
+     }
+ 
+     /**
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/action/TransformAction.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/action/TransformAction.java
+index 2ff2781..f9bcd26 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/action/TransformAction.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/action/TransformAction.java
+@@ -11,7 +11,7 @@ import com.yungnickyoung.minecraft.yungsapi.world.structure.context.StructureCon
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.PieceEntry;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.element.YungJigsawSinglePoolElement;
+ import net.minecraft.core.BlockPos;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.level.levelgen.LegacyRandomSource;
+ import net.minecraft.world.level.levelgen.WorldgenRandom;
+ import net.minecraft.world.level.levelgen.structure.BoundingBox;
+@@ -32,8 +32,8 @@ public class TransformAction extends StructureAction {
+     /**
+      * Helper codec for a single template. Taken from {@link SinglePoolElement}.
+      */
+-    private static final Codec<Either<ResourceLocation, StructureTemplate>> TEMPLATE_CODEC =
+-            Codec.of(TransformAction::encodeTemplate, ResourceLocation.CODEC.map(Either::left));
++    private static final Codec<Either<Identifier, StructureTemplate>> TEMPLATE_CODEC =
++            Codec.of(TransformAction::encodeTemplate, Identifier.CODEC.map(Either::left));
+ 
+     public static final MapCodec<TransformAction> CODEC = RecordCodecBuilder.mapCodec((builder) -> builder
+             .group(
+@@ -47,13 +47,13 @@ public class TransformAction extends StructureAction {
+      * Method for encoding a single template, taken from {@link SinglePoolElement}.
+      * Shouldn't actually be necessary since we are only ever decoding.
+      */
+-    private static <T> DataResult<T> encodeTemplate(Either<ResourceLocation, StructureTemplate> either, DynamicOps<T> ops, T data) {
++    private static <T> DataResult<T> encodeTemplate(Either<Identifier, StructureTemplate> either, DynamicOps<T> ops, T data) {
+         return either.left().isEmpty()
+                 ? DataResult.error(() -> "yungsapi - Cannot serialize a runtime pool element")
+-                : ResourceLocation.CODEC.encode(either.left().get(), ops, data);
++                : Identifier.CODEC.encode(either.left().get(), ops, data);
+     }
+ 
+-    private final List<Either<ResourceLocation, StructureTemplate>> output;
++    private final List<Either<Identifier, StructureTemplate>> output;
+ 
+     private final int xOffset;
+ 
+@@ -61,7 +61,7 @@ public class TransformAction extends StructureAction {
+ 
+     private final int zOffset;
+ 
+-    public TransformAction(List<Either<ResourceLocation, StructureTemplate>> output,
++    public TransformAction(List<Either<Identifier, StructureTemplate>> output,
+                            int xOffset,
+                            int yOffset,
+                            int zOffset) {
+@@ -95,7 +95,7 @@ public class TransformAction extends StructureAction {
+                 targetPieceEntry.getPiece().getPosition().getX());
+ 
+         // Randomly choose output piece
+-        Either<ResourceLocation, StructureTemplate> newTemplate = this.output.get(rand.nextInt(this.output.size()));
++        Either<Identifier, StructureTemplate> newTemplate = this.output.get(rand.nextInt(this.output.size()));
+         StructurePoolElement newElement = new YungJigsawSinglePoolElement(newTemplate, old.processors,
+                 old.getProjection(), old.overrideLiquidSettings, old.name, old.maxCount, old.minRequiredDepth, old.maxPossibleDepth,
+                 old.isPriority, old.ignoreBounds, old.condition, old.enhancedTerrainAdaptation,
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/PieceInHorizontalDirectionCondition.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/PieceInHorizontalDirectionCondition.java
+index 22b57d5..be06c81 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/PieceInHorizontalDirectionCondition.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/PieceInHorizontalDirectionCondition.java
+@@ -8,7 +8,7 @@ import com.yungnickyoung.minecraft.yungsapi.mixin.accessor.SinglePoolElementAcce
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.context.StructureContext;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.PieceEntry;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.element.YungJigsawSinglePoolElement;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.level.block.Rotation;
+ import net.minecraft.world.level.levelgen.structure.BoundingBox;
+ import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
+@@ -30,16 +30,16 @@ import java.util.List;
+  * If you instead need to search for pieces within any horizontal or vertical distance, use {@link PieceInRangeCondition} instead.
+  */
+ public class PieceInHorizontalDirectionCondition extends StructureCondition {
+-    private static final ResourceLocation ALL = ResourceLocation.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "all");
++    private static final Identifier ALL = Identifier.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "all");
+ 
+     public static final MapCodec<PieceInHorizontalDirectionCondition> CODEC = RecordCodecBuilder.mapCodec((builder) -> builder
+             .group(
+-                    ResourceLocation.CODEC.listOf().optionalFieldOf("pieces", new ArrayList<>()).forGetter(conditon -> conditon.matchPieces),
++                    Identifier.CODEC.listOf().optionalFieldOf("pieces", new ArrayList<>()).forGetter(conditon -> conditon.matchPieces),
+                     Codec.INT.fieldOf("range").forGetter(conditon -> conditon.range),
+                     Rotation.CODEC.fieldOf("rotation").forGetter(conditon -> conditon.rotation))
+             .apply(builder, PieceInHorizontalDirectionCondition::new));
+ 
+-    private final List<ResourceLocation> matchPieces;
++    private final List<Identifier> matchPieces;
+ 
+     private final Integer range;
+ 
+@@ -55,7 +55,7 @@ public class PieceInHorizontalDirectionCondition extends StructureCondition {
+      */
+     private final Rotation rotation;
+ 
+-    public PieceInHorizontalDirectionCondition(List<ResourceLocation> pieces, int range, Rotation rotation) {
++    public PieceInHorizontalDirectionCondition(List<Identifier> pieces, int range, Rotation rotation) {
+         this.matchPieces = pieces;
+         this.range = range;
+         this.rotation = rotation;
+@@ -117,7 +117,7 @@ public class PieceInHorizontalDirectionCondition extends StructureCondition {
+                         : ((YungJigsawSinglePoolElement) otherPiece.getElement()).getTemplate(templateManager);
+ 
+                 // Iterate our target pieces and check for a match with otherPiece
+-                for (ResourceLocation matchPieceId : matchPieces) {
++                for (Identifier matchPieceId : matchPieces) {
+                     StructureTemplate structureTemplate = templateManager.getOrCreate(matchPieceId);
+                     if (otherStructureTemplate == structureTemplate || matchPieceId.equals(ALL)) {
+                         // This is one of the pieces we're searching for, so we test its bounding box
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/PieceInRangeCondition.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/PieceInRangeCondition.java
+index 9ff88af..c0f65d8 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/PieceInRangeCondition.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/PieceInRangeCondition.java
+@@ -8,7 +8,7 @@ import com.yungnickyoung.minecraft.yungsapi.mixin.accessor.SinglePoolElementAcce
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.context.StructureContext;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.PieceEntry;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.element.YungJigsawSinglePoolElement;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.level.levelgen.structure.BoundingBox;
+ import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
+ import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
+@@ -24,23 +24,23 @@ import java.util.List;
+  * Note that "yungsapi:all" is an acceptable entry for matching any piece.
+  */
+ public class PieceInRangeCondition extends StructureCondition {
+-    private static final ResourceLocation ALL = ResourceLocation.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "all");
++    private static final Identifier ALL = Identifier.fromNamespaceAndPath(YungsApiCommon.MOD_ID, "all");
+ 
+     public static final MapCodec<PieceInRangeCondition> CODEC = RecordCodecBuilder.mapCodec((builder) -> builder
+             .group(
+-                    ResourceLocation.CODEC.listOf().optionalFieldOf("pieces", new ArrayList<>()).forGetter(conditon -> conditon.matchPieces),
++                    Identifier.CODEC.listOf().optionalFieldOf("pieces", new ArrayList<>()).forGetter(conditon -> conditon.matchPieces),
+                     Codec.INT.optionalFieldOf("above_range", 0).forGetter(conditon -> conditon.aboveRange),
+                     Codec.INT.optionalFieldOf("horizontal_range", 0).forGetter(conditon -> conditon.horizontalRange),
+                     Codec.INT.optionalFieldOf("below_range", 0).forGetter(conditon -> conditon.belowRange))
+             .apply(builder, PieceInRangeCondition::new));
+ 
+-    private final List<ResourceLocation> matchPieces;
++    private final List<Identifier> matchPieces;
+ 
+     private final Integer aboveRange;
+     private final Integer horizontalRange;
+     private final Integer belowRange;
+ 
+-    public PieceInRangeCondition(List<ResourceLocation> pieces, int aboveRange, int horizontalRange, int belowRange) {
++    public PieceInRangeCondition(List<Identifier> pieces, int aboveRange, int horizontalRange, int belowRange) {
+         this.matchPieces = pieces;
+         this.aboveRange = aboveRange;
+         this.horizontalRange = horizontalRange;
+@@ -92,7 +92,7 @@ public class PieceInRangeCondition extends StructureCondition {
+                         : ((YungJigsawSinglePoolElement) otherPiece.getElement()).getTemplate(templateManager);
+ 
+                 // Iterate our target pieces and check for a match with otherPiece
+-                for (ResourceLocation matchPieceId : matchPieces) {
++                for (Identifier matchPieceId : matchPieces) {
+                     StructureTemplate structureTemplate = templateManager.getOrCreate(matchPieceId);
+                     if (otherStructureTemplate == structureTemplate || matchPieceId.equals(ALL)) {
+                         // This is one of the pieces we're searching for, so we test its bounding box.
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/StructureConditionType.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/StructureConditionType.java
+index 88176f5..88e862b 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/StructureConditionType.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/condition/StructureConditionType.java
+@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
+ import com.mojang.serialization.DataResult;
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.yungsapi.YungsApiCommon;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+@@ -16,11 +16,11 @@ import java.util.Optional;
+  */
+ public interface StructureConditionType<C extends StructureCondition> {
+     /* Utility maps for codecs. Simulates the approach vanilla registries use. */
+-    Map<ResourceLocation, StructureConditionType<?>> CONDITION_TYPES_BY_NAME = new HashMap<>();
+-    Map<StructureConditionType<?>, ResourceLocation> NAME_BY_CONDITION_TYPES = new HashMap<>();
++    Map<Identifier, StructureConditionType<?>> CONDITION_TYPES_BY_NAME = new HashMap<>();
++    Map<StructureConditionType<?>, Identifier> NAME_BY_CONDITION_TYPES = new HashMap<>();
+ 
+     /* Codecs */
+-    Codec<StructureConditionType<?>> CONDITION_TYPE_CODEC = ResourceLocation.CODEC
++    Codec<StructureConditionType<?>> CONDITION_TYPE_CODEC = Identifier.CODEC
+             .flatXmap(
+                     resourceLocation -> Optional.ofNullable(CONDITION_TYPES_BY_NAME.get(resourceLocation))
+                             .map(DataResult::success)
+@@ -50,7 +50,7 @@ public interface StructureConditionType<C extends StructureCondition> {
+     /**
+      * Utility method for registering StructureConditionTypes.
+      */
+-    static <C extends StructureCondition> StructureConditionType<C> register(ResourceLocation resourceLocation, MapCodec<C> codec) {
++    static <C extends StructureCondition> StructureConditionType<C> register(Identifier resourceLocation, MapCodec<C> codec) {
+         StructureConditionType<C> conditionType = () -> codec;
+         CONDITION_TYPES_BY_NAME.put(resourceLocation, conditionType);
+         NAME_BY_CONDITION_TYPES.put(conditionType, resourceLocation);
+@@ -61,7 +61,7 @@ public interface StructureConditionType<C extends StructureCondition> {
+      * Private utility method for registering StructureConditionTypes native to YUNG's API.
+      */
+     private static <C extends StructureCondition> StructureConditionType<C> register(String id, MapCodec<C> codec) {
+-        return register(ResourceLocation.fromNamespaceAndPath(YungsApiCommon.MOD_ID, id), codec);
++        return register(Identifier.fromNamespaceAndPath(YungsApiCommon.MOD_ID, id), codec);
+     }
+ 
+     /**
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/JigsawManager.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/JigsawManager.java
+index b125126..807db18 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/JigsawManager.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/JigsawManager.java
+@@ -8,14 +8,14 @@ import com.yungnickyoung.minecraft.yungsapi.world.structure.context.StructureCon
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.assembler.JigsawStructureAssembler;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.element.YungJigsawPoolElement;
+ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Holder;
+ import net.minecraft.core.Registry;
+ import net.minecraft.core.RegistryAccess;
+ import net.minecraft.core.Vec3i;
+ import net.minecraft.core.registries.Registries;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.level.LevelHeightAccessor;
+ import net.minecraft.world.level.block.Rotation;
+@@ -42,7 +42,7 @@ public class JigsawManager {
+     public static Optional<Structure.GenerationStub> assembleJigsawStructure(
+             Structure.GenerationContext generationContext,
+             Holder<StructureTemplatePool> startPool,
+-            Optional<ResourceLocation> startJigsawNameOptional,
++            Optional<Identifier> startJigsawNameOptional,
+             int maxDepth,
+             BlockPos locatePos, // The original starting position of the structure, also where /locate points to
+             boolean useExpansionHack, // Used to be doBoundaryAdjustments
+@@ -136,7 +136,7 @@ public class JigsawManager {
+      */
+     private static Optional<PoolElementStructurePiece> getStartPiece(
+             Holder<StructureTemplatePool> startPoolHolder,
+-            Optional<ResourceLocation> startJigsawNameOptional,
++            Optional<Identifier> startJigsawNameOptional,
+             BlockPos locatePos,
+             LiquidSettings liquidSettings,
+             Structure.GenerationContext generationContext
+@@ -194,11 +194,11 @@ public class JigsawManager {
+ 
+             BlockPos anchorPos;
+             if (startJigsawNameOptional.isPresent()) {
+-                ResourceLocation name = startJigsawNameOptional.get();
++                Identifier name = startJigsawNameOptional.get();
+                 Optional<BlockPos> optional = getPosOfJigsawBlockWithName(chosenPoolElement, name, locatePos, rotation, structureTemplateManager, rand);
+                 if (optional.isEmpty()) {
+                     YungsApiCommon.LOGGER.error("No starting jigsaw with Name {} found in start pool {}", name, startPoolHolder.unwrapKey()
+-                            .map(pool -> pool.location().toString())
++                            .map(pool -> pool.identifier().toString())
+                             .orElse("<unregistered>"));
+                     return Optional.empty();
+                 }
+@@ -254,7 +254,7 @@ public class JigsawManager {
+      */
+     private static Optional<BlockPos> getPosOfJigsawBlockWithName(
+             StructurePoolElement structurePoolElement,
+-            ResourceLocation name,
++            Identifier name,
+             BlockPos startPos,
+             Rotation rotation,
+             StructureTemplateManager structureTemplateManager,
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/PieceEntry.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/PieceEntry.java
+index ae38b4a..3723e4e 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/PieceEntry.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/PieceEntry.java
+@@ -3,7 +3,7 @@ package com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw;
+ import com.yungnickyoung.minecraft.yungsapi.util.BoxOctree;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.assembler.PieceContext;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.element.YungJigsawSinglePoolElement;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
+ import net.minecraft.world.level.levelgen.structure.pools.JigsawJunction;
+ import net.minecraft.world.phys.AABB;
+@@ -76,7 +76,7 @@ public class PieceEntry {
+         return parentJunction;
+     }
+ 
+-    public Optional<ResourceLocation> getDeadendPool() {
++    public Optional<Identifier> getDeadendPool() {
+         if (this.piece.getElement() instanceof YungJigsawSinglePoolElement yungSingleElement) {
+             return yungSingleElement.getDeadendPool();
+         }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/assembler/JigsawStructureAssembler.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/assembler/JigsawStructureAssembler.java
+index 0830d40..e377845 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/assembler/JigsawStructureAssembler.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/assembler/JigsawStructureAssembler.java
+@@ -13,7 +13,7 @@ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.element.IMaxC
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.element.YungJigsawSinglePoolElement;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.jigsaw.element.YungJigsawPoolElement;
+ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+ import net.minecraft.core.Holder;
+@@ -21,7 +21,7 @@ import net.minecraft.core.Registry;
+ import net.minecraft.core.registries.Registries;
+ import net.minecraft.data.worldgen.Pools;
+ import net.minecraft.resources.ResourceKey;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.level.LevelHeightAccessor;
+ import net.minecraft.world.level.biome.BiomeSource;
+@@ -160,13 +160,13 @@ public class JigsawStructureAssembler {
+             // Fetch the target pool, ensuring it's not empty
+             Optional<? extends Holder<StructureTemplatePool>> optionalPoolHolder = this.settings.poolRegistry.get(poolKey);
+             if (optionalPoolHolder.isEmpty()) {
+-                YungsApiCommon.LOGGER.warn("Empty or nonexistent pool: {}", poolKey.location());
++                YungsApiCommon.LOGGER.warn("Empty or nonexistent pool: {}", poolKey.identifier());
+                 continue;
+             }
+             Holder<StructureTemplatePool> targetPoolHolder = optionalPoolHolder.get();
+             StructureTemplatePool targetPool = targetPoolHolder.value();
+             if (targetPool.size() == 0 && !targetPoolHolder.is(Pools.EMPTY)) {
+-                YungsApiCommon.LOGGER.warn("Empty or nonexistent pool: {}", poolKey.location());
++                YungsApiCommon.LOGGER.warn("Empty or nonexistent pool: {}", poolKey.identifier());
+                 continue;
+             }
+ 
+@@ -175,7 +175,7 @@ public class JigsawStructureAssembler {
+             StructureTemplatePool fallbackPool = fallbackPoolHolder.value();
+             if (fallbackPool.size() == 0 && !fallbackPoolHolder.is(Pools.EMPTY)) {
+                 YungsApiCommon.LOGGER.warn("Empty or nonexistent fallback pool: {}", fallbackPoolHolder.unwrapKey()
+-                        .map(key -> key.location().toString())
++                        .map(key -> key.identifier().toString())
+                         .orElse("<unregistered>"));
+                 continue;
+             }
+@@ -208,7 +208,7 @@ public class JigsawStructureAssembler {
+          */
+         if (pieceEntry.getDeadendPool().isPresent() && !generatedAtLeastOneChildPiece && pieceJigsawBlocks.size() > 1) {
+             // Get deadend pool from id
+-            ResourceLocation deadendPoolId = pieceEntry.getDeadendPool().get();
++            Identifier deadendPoolId = pieceEntry.getDeadendPool().get();
+             Optional<StructureTemplatePool> deadendPool = this.settings.poolRegistry.getOptional(deadendPoolId);
+             if (deadendPool.isEmpty()) {
+                 YungsApiCommon.LOGGER.error("Unable to find deadend pool {} for element {}", deadendPoolId, piece.getElement());
+@@ -643,7 +643,7 @@ public class JigsawStructureAssembler {
+     }
+ 
+     private static ResourceKey<StructureTemplatePool> readPoolKey(StructureTemplate.JigsawBlockInfo jigsawBlockInfo) {
+-        return ResourceKey.create(Registries.TEMPLATE_POOL, jigsawBlockInfo.pool());
++        return jigsawBlockInfo.pool();
+     }
+ 
+     public static class Settings {
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/MaxCountLegacySinglePoolElement.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/MaxCountLegacySinglePoolElement.java
+index a2a8f13..acaf609 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/MaxCountLegacySinglePoolElement.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/MaxCountLegacySinglePoolElement.java
+@@ -6,7 +6,7 @@ import com.mojang.serialization.MapCodec;
+ import com.mojang.serialization.codecs.RecordCodecBuilder;
+ import com.yungnickyoung.minecraft.yungsapi.module.StructurePoolElementTypeModule;
+ import net.minecraft.core.Holder;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.level.levelgen.structure.pools.LegacySinglePoolElement;
+ import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElementType;
+ import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
+@@ -35,7 +35,7 @@ public class MaxCountLegacySinglePoolElement extends LegacySinglePoolElement imp
+     protected final int maxCount;
+     protected final String name;
+ 
+-    public MaxCountLegacySinglePoolElement(Either<ResourceLocation, StructureTemplate> resourceLocation,
++    public MaxCountLegacySinglePoolElement(Either<Identifier, StructureTemplate> resourceLocation,
+                                            Holder<StructureProcessorList> processors,
+                                            StructureTemplatePool.Projection projection,
+                                            Optional<LiquidSettings> liquidSettings,
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/MaxCountSinglePoolElement.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/MaxCountSinglePoolElement.java
+index b966a00..6587755 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/MaxCountSinglePoolElement.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/MaxCountSinglePoolElement.java
+@@ -6,7 +6,7 @@ import com.mojang.serialization.MapCodec;
+ import com.mojang.serialization.codecs.RecordCodecBuilder;
+ import com.yungnickyoung.minecraft.yungsapi.module.StructurePoolElementTypeModule;
+ import net.minecraft.core.Holder;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.level.levelgen.structure.pools.SinglePoolElement;
+ import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElementType;
+ import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
+@@ -35,7 +35,7 @@ public class MaxCountSinglePoolElement extends SinglePoolElement implements IMax
+     protected final int maxCount;
+     protected final String name;
+ 
+-    public MaxCountSinglePoolElement(Either<ResourceLocation, StructureTemplate> resourceLocation,
++    public MaxCountSinglePoolElement(Either<Identifier, StructureTemplate> resourceLocation,
+                                      Holder<StructureProcessorList> processors,
+                                      StructureTemplatePool.Projection projection,
+                                      Optional<LiquidSettings> liquidSettings,
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawFeatureElement.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawFeatureElement.java
+index fe3bca5..b4a8741 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawFeatureElement.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawFeatureElement.java
+@@ -5,7 +5,6 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
+ import com.yungnickyoung.minecraft.yungsapi.module.StructurePoolElementTypeModule;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.condition.StructureCondition;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.terrainadaptation.adaptations.EnhancedTerrainAdaptation;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+ import net.minecraft.core.FrontAndTop;
+@@ -37,7 +36,6 @@ import java.util.Optional;
+  * Custom {@link FeaturePoolElement} with support for many additional settings.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class YungJigsawFeatureElement extends YungJigsawPoolElement {
+     public static final MapCodec<YungJigsawFeatureElement> CODEC = RecordCodecBuilder.mapCodec((builder) -> builder
+             .group(
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawPoolElement.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawPoolElement.java
+index 917fcd7..89fe6cc 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawPoolElement.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawPoolElement.java
+@@ -10,7 +10,6 @@ import com.yungnickyoung.minecraft.yungsapi.world.structure.condition.StructureC
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.context.StructureContext;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.terrainadaptation.adaptations.EnhancedTerrainAdaptation;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.terrainadaptation.adaptations.EnhancedTerrainAdaptationType;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.util.ExtraCodecs;
+ import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
+ import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
+@@ -22,7 +21,6 @@ import java.util.Optional;
+  * Custom {@link net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement} with support for many additional settings.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public abstract class YungJigsawPoolElement extends StructurePoolElement {
+     /**
+      * The name of this piece.
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawSinglePoolElement.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawSinglePoolElement.java
+index e3a681b..bb4ae7c 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawSinglePoolElement.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/jigsaw/element/YungJigsawSinglePoolElement.java
+@@ -11,12 +11,11 @@ import com.yungnickyoung.minecraft.yungsapi.module.StructurePoolElementTypeModul
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.condition.StructureCondition;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.modifier.StructureModifier;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.terrainadaptation.adaptations.EnhancedTerrainAdaptation;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Holder;
+ import net.minecraft.core.Vec3i;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.level.StructureManager;
+ import net.minecraft.world.level.WorldGenLevel;
+@@ -48,10 +47,9 @@ import java.util.function.Function;
+  * Custom {@link SinglePoolElement} with support for many additional settings.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class YungJigsawSinglePoolElement extends YungJigsawPoolElement {
+-    private static final Codec<Either<ResourceLocation, StructureTemplate>> TEMPLATE_CODEC = Codec.of(
+-            YungJigsawSinglePoolElement::encodeTemplate, ResourceLocation.CODEC.map(Either::left));
++    private static final Codec<Either<Identifier, StructureTemplate>> TEMPLATE_CODEC = Codec.of(
++            YungJigsawSinglePoolElement::encodeTemplate, Identifier.CODEC.map(Either::left));
+ 
+     public static final MapCodec<YungJigsawSinglePoolElement> CODEC = RecordCodecBuilder.mapCodec((builder) -> builder
+             .group(
+@@ -67,7 +65,7 @@ public class YungJigsawSinglePoolElement extends YungJigsawPoolElement {
+                     ignoreBoundsCodec(),
+                     conditionCodec(),
+                     enhancedTerrainAdaptationCodec(),
+-                    ResourceLocation.CODEC.optionalFieldOf("deadend_pool").forGetter(element -> element.deadendPool),
++                    Identifier.CODEC.optionalFieldOf("deadend_pool").forGetter(element -> element.deadendPool),
+                     StructureModifier.CODEC.listOf().optionalFieldOf("modifiers", new ArrayList<>()).forGetter(element -> element.modifiers)
+             ).apply(builder, YungJigsawSinglePoolElement::new));
+ 
+@@ -75,7 +73,7 @@ public class YungJigsawSinglePoolElement extends YungJigsawPoolElement {
+             Comparator.comparingInt(StructureTemplate.JigsawBlockInfo::selectionPriority).reversed();
+ 
+ 
+-    public final Either<ResourceLocation, StructureTemplate> template;
++    public final Either<Identifier, StructureTemplate> template;
+     public final Holder<StructureProcessorList> processors;
+     public final Optional<LiquidSettings> overrideLiquidSettings;
+ 
+@@ -96,7 +94,7 @@ public class YungJigsawSinglePoolElement extends YungJigsawPoolElement {
+      * jigsaw block, your structure's generation may get stuck in an infinite loop!
+      * </p>
+      */
+-    public final Optional<ResourceLocation> deadendPool;
++    public final Optional<Identifier> deadendPool;
+ 
+     /**
+      * Post-placement modifiers.
+@@ -106,7 +104,7 @@ public class YungJigsawSinglePoolElement extends YungJigsawPoolElement {
+     public final List<StructureModifier> modifiers;
+ 
+     public YungJigsawSinglePoolElement(
+-            Either<ResourceLocation, StructureTemplate> template,
++            Either<Identifier, StructureTemplate> template,
+             Holder<StructureProcessorList> processors,
+             StructureTemplatePool.Projection projection,
+             Optional<LiquidSettings> overrideLiquidSettings,
+@@ -118,7 +116,7 @@ public class YungJigsawSinglePoolElement extends YungJigsawPoolElement {
+             boolean ignoreBounds,
+             StructureCondition condition,
+             Optional<EnhancedTerrainAdaptation> enhancedTerrainAdaptation,
+-            Optional<ResourceLocation> deadendPool,
++            Optional<Identifier> deadendPool,
+             List<StructureModifier> modifiers
+     ) {
+         super(projection, name, maxCount, minRequiredDepth, maxPossibleDepth, isPriority, ignoreBounds, condition, enhancedTerrainAdaptation);
+@@ -184,7 +182,7 @@ public class YungJigsawSinglePoolElement extends YungJigsawPoolElement {
+         }
+     }
+ 
+-    public Optional<ResourceLocation> getDeadendPool() {
++    public Optional<Identifier> getDeadendPool() {
+         return this.deadendPool;
+     }
+ 
+@@ -232,7 +230,7 @@ public class YungJigsawSinglePoolElement extends YungJigsawPoolElement {
+         List<StructureTemplate.StructureBlockInfo> dataBlocks = Lists.newArrayList();
+ 
+         for (StructureTemplate.StructureBlockInfo block : structureBlocks) {
+-            StructureMode structureMode = StructureMode.valueOf(block.nbt().getString("mode"));
++            StructureMode structureMode = StructureMode.valueOf(block.nbt().getStringOr("mode", ""));
+             if (structureMode == StructureMode.DATA) {
+                 dataBlocks.add(block);
+             }
+@@ -245,7 +243,7 @@ public class YungJigsawSinglePoolElement extends YungJigsawPoolElement {
+         return StructureProcessorType.LIST_CODEC.fieldOf("processors").forGetter(element -> element.processors);
+     }
+ 
+-    public static <E extends YungJigsawSinglePoolElement> RecordCodecBuilder<E, Either<ResourceLocation, StructureTemplate>> templateCodec() {
++    public static <E extends YungJigsawSinglePoolElement> RecordCodecBuilder<E, Either<Identifier, StructureTemplate>> templateCodec() {
+         return TEMPLATE_CODEC.fieldOf("location").forGetter(element -> element.template);
+     }
+ 
+@@ -253,8 +251,8 @@ public class YungJigsawSinglePoolElement extends YungJigsawPoolElement {
+         return LiquidSettings.CODEC.optionalFieldOf("override_liquid_settings").forGetter(element -> element.overrideLiquidSettings);
+     }
+ 
+-    private static <T> DataResult<T> encodeTemplate(Either<ResourceLocation, StructureTemplate> either, DynamicOps<T> ops, T template) {
+-        Optional<ResourceLocation> optional = either.left();
+-        return !optional.isPresent() ? DataResult.error(() -> "Can not serialize a runtime pool element") : ResourceLocation.CODEC.encode(optional.get(), ops, template);
++    private static <T> DataResult<T> encodeTemplate(Either<Identifier, StructureTemplate> either, DynamicOps<T> ops, T template) {
++        Optional<Identifier> optional = either.left();
++        return !optional.isPresent() ? DataResult.error(() -> "Can not serialize a runtime pool element") : Identifier.CODEC.encode(optional.get(), ops, template);
+     }
+ }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/targetselector/StructureTargetSelectorType.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/targetselector/StructureTargetSelectorType.java
+index 55c0366..84c1b1d 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/targetselector/StructureTargetSelectorType.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/targetselector/StructureTargetSelectorType.java
+@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
+ import com.mojang.serialization.DataResult;
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.yungsapi.YungsApiCommon;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+@@ -16,11 +16,11 @@ import java.util.Optional;
+  */
+ public interface StructureTargetSelectorType<C extends StructureTargetSelector> {
+     /* Utility maps for codecs. Simulates the approach vanilla registries use. */
+-    Map<ResourceLocation, StructureTargetSelectorType<?>> TARGET_SELECTOR_TYPES_BY_NAME = new HashMap<>();
+-    Map<StructureTargetSelectorType<?>, ResourceLocation> NAME_BY_TARGET_SELECTOR_TYPES = new HashMap<>();
++    Map<Identifier, StructureTargetSelectorType<?>> TARGET_SELECTOR_TYPES_BY_NAME = new HashMap<>();
++    Map<StructureTargetSelectorType<?>, Identifier> NAME_BY_TARGET_SELECTOR_TYPES = new HashMap<>();
+ 
+     /* Codecs */
+-    Codec<StructureTargetSelectorType<?>> TARGET_SELECTOR_TYPE_CODEC = ResourceLocation.CODEC
++    Codec<StructureTargetSelectorType<?>> TARGET_SELECTOR_TYPE_CODEC = Identifier.CODEC
+             .flatXmap(
+                     resourceLocation -> Optional.ofNullable(TARGET_SELECTOR_TYPES_BY_NAME.get(resourceLocation))
+                             .map(DataResult::success)
+@@ -38,7 +38,7 @@ public interface StructureTargetSelectorType<C extends StructureTargetSelector>
+     /**
+      * Utility method for registering TargetSelectorTypes.
+      */
+-    static <C extends StructureTargetSelector> StructureTargetSelectorType<C> register(ResourceLocation resourceLocation, MapCodec<C> codec) {
++    static <C extends StructureTargetSelector> StructureTargetSelectorType<C> register(Identifier resourceLocation, MapCodec<C> codec) {
+         StructureTargetSelectorType<C> targetSelectorType = () -> codec;
+         TARGET_SELECTOR_TYPES_BY_NAME.put(resourceLocation, targetSelectorType);
+         NAME_BY_TARGET_SELECTOR_TYPES.put(targetSelectorType, resourceLocation);
+@@ -49,7 +49,7 @@ public interface StructureTargetSelectorType<C extends StructureTargetSelector>
+      * Private utility method for registering TargetSelectorTypes native to YUNG's API.
+      */
+     private static <C extends StructureTargetSelector> StructureTargetSelectorType<C> register(String id, MapCodec<C> codec) {
+-        return register(ResourceLocation.fromNamespaceAndPath(YungsApiCommon.MOD_ID, id), codec);
++        return register(Identifier.fromNamespaceAndPath(YungsApiCommon.MOD_ID, id), codec);
+     }
+ 
+     /**
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/adaptations/EnhancedTerrainAdaptation.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/adaptations/EnhancedTerrainAdaptation.java
+index a530620..79b3800 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/adaptations/EnhancedTerrainAdaptation.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/adaptations/EnhancedTerrainAdaptation.java
+@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
+ import com.mojang.serialization.codecs.RecordCodecBuilder;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.YungJigsawStructure;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.terrainadaptation.aquiferoverride.AquiferOverride;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.util.Mth;
+ import net.minecraft.util.StringRepresentable;
+ import net.minecraft.world.level.levelgen.structure.TerrainAdjustment;
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/adaptations/EnhancedTerrainAdaptationType.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/adaptations/EnhancedTerrainAdaptationType.java
+index 35c37c3..ba6ac97 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/adaptations/EnhancedTerrainAdaptationType.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/adaptations/EnhancedTerrainAdaptationType.java
+@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
+ import com.mojang.serialization.DataResult;
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.yungsapi.YungsApiCommon;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+@@ -16,11 +16,11 @@ import java.util.Optional;
+  */
+ public interface EnhancedTerrainAdaptationType<C extends EnhancedTerrainAdaptation> {
+     /* Utility maps for codecs. Simulates the approach vanilla registries use. */
+-    Map<ResourceLocation, EnhancedTerrainAdaptationType<?>> ADAPTATION_TYPES_BY_NAME = new HashMap<>();
+-    Map<EnhancedTerrainAdaptationType<?>, ResourceLocation> NAME_BY_ADAPTATION_TYPES = new HashMap<>();
++    Map<Identifier, EnhancedTerrainAdaptationType<?>> ADAPTATION_TYPES_BY_NAME = new HashMap<>();
++    Map<EnhancedTerrainAdaptationType<?>, Identifier> NAME_BY_ADAPTATION_TYPES = new HashMap<>();
+ 
+     /* Codecs */
+-    Codec<EnhancedTerrainAdaptationType<?>> ADAPTATION_TYPE_CODEC = ResourceLocation.CODEC
++    Codec<EnhancedTerrainAdaptationType<?>> ADAPTATION_TYPE_CODEC = Identifier.CODEC
+             .flatXmap(
+                     resourceLocation -> Optional.ofNullable(ADAPTATION_TYPES_BY_NAME.get(resourceLocation))
+                             .map(DataResult::success)
+@@ -43,7 +43,7 @@ public interface EnhancedTerrainAdaptationType<C extends EnhancedTerrainAdaptati
+     /**
+      * Utility method for registering EnhancedTerrainAdaptationTypes.
+      */
+-    static <C extends EnhancedTerrainAdaptation> EnhancedTerrainAdaptationType<C> register(ResourceLocation resourceLocation, MapCodec<C> codec) {
++    static <C extends EnhancedTerrainAdaptation> EnhancedTerrainAdaptationType<C> register(Identifier resourceLocation, MapCodec<C> codec) {
+         EnhancedTerrainAdaptationType<C> adaptationType = () -> codec;
+         ADAPTATION_TYPES_BY_NAME.put(resourceLocation, adaptationType);
+         NAME_BY_ADAPTATION_TYPES.put(adaptationType, resourceLocation);
+@@ -54,7 +54,7 @@ public interface EnhancedTerrainAdaptationType<C extends EnhancedTerrainAdaptati
+      * Private utility method for registering EnhancedTerrainAdaptationTypes native to YUNG's API.
+      */
+     private static <C extends EnhancedTerrainAdaptation> EnhancedTerrainAdaptationType<C> register(String id, MapCodec<C> codec) {
+-        return register(ResourceLocation.fromNamespaceAndPath(YungsApiCommon.MOD_ID, id), codec);
++        return register(Identifier.fromNamespaceAndPath(YungsApiCommon.MOD_ID, id), codec);
+     }
+ 
+     /**
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/aquiferoverride/AquiferOverrideType.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/aquiferoverride/AquiferOverrideType.java
+index f465c8b..62f8df7 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/aquiferoverride/AquiferOverrideType.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/aquiferoverride/AquiferOverrideType.java
+@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
+ import com.mojang.serialization.DataResult;
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.yungsapi.YungsApiCommon;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ 
+ import java.util.HashMap;
+ import java.util.Map;
+@@ -16,11 +16,11 @@ import java.util.Optional;
+  */
+ public interface AquiferOverrideType<C extends AquiferOverride> {
+     /* Utility maps for codecs. Simulates the approach vanilla registries use. */
+-    Map<ResourceLocation, AquiferOverrideType<?>> AQUIFER_OVERRIDE_TYPE_BY_NAME = new HashMap<>();
+-    Map<AquiferOverrideType<?>, ResourceLocation> AQUIFER_OVERRIDE_NAME_BY_TYPE = new HashMap<>();
++    Map<Identifier, AquiferOverrideType<?>> AQUIFER_OVERRIDE_TYPE_BY_NAME = new HashMap<>();
++    Map<AquiferOverrideType<?>, Identifier> AQUIFER_OVERRIDE_NAME_BY_TYPE = new HashMap<>();
+ 
+     /* Codecs */
+-    Codec<AquiferOverrideType<?>> AQUIFER_OVERRIDE_TYPE_CODEC = ResourceLocation.CODEC
++    Codec<AquiferOverrideType<?>> AQUIFER_OVERRIDE_TYPE_CODEC = Identifier.CODEC
+             .flatXmap(
+                     resourceLocation -> Optional.ofNullable(AQUIFER_OVERRIDE_TYPE_BY_NAME.get(resourceLocation))
+                             .map(DataResult::success)
+@@ -40,7 +40,7 @@ public interface AquiferOverrideType<C extends AquiferOverride> {
+     /**
+      * Utility method for registering AquiferOverrideTypes.
+      */
+-    static <C extends AquiferOverride> AquiferOverrideType<C> register(ResourceLocation resourceLocation, MapCodec<C> codec) {
++    static <C extends AquiferOverride> AquiferOverrideType<C> register(Identifier resourceLocation, MapCodec<C> codec) {
+         AquiferOverrideType<C> type = () -> codec;
+         AQUIFER_OVERRIDE_TYPE_BY_NAME.put(resourceLocation, type);
+         AQUIFER_OVERRIDE_NAME_BY_TYPE.put(type, resourceLocation);
+@@ -51,7 +51,7 @@ public interface AquiferOverrideType<C extends AquiferOverride> {
+      * Private utility method for registering AquiferOverrideTypes native to YUNG's API.
+      */
+     private static <C extends AquiferOverride> AquiferOverrideType<C> register(String id, MapCodec<C> codec) {
+-        return register(ResourceLocation.fromNamespaceAndPath(YungsApiCommon.MOD_ID, id), codec);
++        return register(Identifier.fromNamespaceAndPath(YungsApiCommon.MOD_ID, id), codec);
+     }
+ 
+     /**
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/beardifier/EnhancedBeardifierHelper.java b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/beardifier/EnhancedBeardifierHelper.java
+index df4aa97..8d33545 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/beardifier/EnhancedBeardifierHelper.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/structure/terrainadaptation/beardifier/EnhancedBeardifierHelper.java
+@@ -119,7 +119,7 @@ public class EnhancedBeardifierHelper {
+             }
+         }
+ 
+-        Beardifier newBeardifier = new Beardifier(((BeardifierAccessor) original).getPieceIterator(), ((BeardifierAccessor) original).getJunctionIterator());
++        Beardifier newBeardifier = new Beardifier(((BeardifierAccessor) original).getPieces(), ((BeardifierAccessor) original).getJunctions(), ((BeardifierAccessor) original).getAffectedBox());
+         EnhancedBeardifierData enhancedBeardifier = (EnhancedBeardifierData) newBeardifier;
+         enhancedBeardifier.setEnhancedPieceIterator(enhancedBeardifierRigidList.iterator());
+         enhancedBeardifier.setEnhancedJunctionIterator(enhancedJunctionList.iterator());
+diff --git a/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/mixin/EntityProcessorMixinFabric.java b/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/mixin/EntityProcessorMixinFabric.java
+index 5621ce3..03ced78 100644
+--- a/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/mixin/EntityProcessorMixinFabric.java
++++ b/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/mixin/EntityProcessorMixinFabric.java
+@@ -102,7 +102,7 @@ public class EntityProcessorMixinFabric {
+                 tryCreateEntity(serverLevelAccessor, entityNbt).ifPresent((entity) -> {
+                     float f = entity.mirror(ctx.structurePlaceSettings().getMirror());
+                     f += entity.getYRot() - entity.rotate(ctx.structurePlaceSettings().getRotation());
+-                    entity.moveTo(entityPos.x, entityPos.y, entityPos.z, f, entity.getXRot());
++                    entity.snapTo(entityPos.x, entityPos.y, entityPos.z, f, entity.getXRot());
+                     if (ctx.structurePlaceSettings().shouldFinalizeEntities() && entity instanceof Mob) {
+                         ((Mob) entity).finalizeSpawn(serverLevelAccessor, serverLevelAccessor.getCurrentDifficultyAt(BlockPos.containing(entityPos)), EntitySpawnReason.STRUCTURE, null);
+                     }
+@@ -173,7 +173,7 @@ public class EntityProcessorMixinFabric {
+     @Unique
+     private static Optional<Entity> tryCreateEntity(ServerLevelAccessor serverLevelAccessor, CompoundTag compoundTag) {
+         try {
+-            return EntityType.create(compoundTag, serverLevelAccessor.getLevel(), EntitySpawnReason.STRUCTURE);
++            return EntityType.create(net.minecraft.world.level.storage.TagValueInput.create(net.minecraft.util.ProblemReporter.DISCARDING, serverLevelAccessor.registryAccess(), compoundTag), serverLevelAccessor.getLevel(), EntitySpawnReason.STRUCTURE);
+         } catch (Exception exception) {
+             return Optional.empty();
+         }
+diff --git a/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/BlockModuleFabric.java b/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/BlockModuleFabric.java
+index da4c6c6..7d9b02b 100644
+--- a/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/BlockModuleFabric.java
++++ b/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/BlockModuleFabric.java
+@@ -6,7 +6,7 @@ import com.yungnickyoung.minecraft.yungsapi.autoregister.AutoRegisterField;
+ import com.yungnickyoung.minecraft.yungsapi.mixin.accessor.StairBlockAccessor;
+ import net.minecraft.core.Registry;
+ import net.minecraft.core.registries.BuiltInRegistries;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.level.block.Block;
+ import net.minecraft.world.level.block.FenceBlock;
+ import net.minecraft.world.level.block.FenceGateBlock;
+@@ -43,7 +43,7 @@ public class BlockModuleFabric {
+         // Register associated Blocks & their BlockItems, if applicable
+         if (autoRegisterBlock.hasStairs()) {
+             Block stairBlock = StairBlockAccessor.createStairBlock(block.defaultBlockState(), BlockBehaviour.Properties.ofLegacyCopy(block));
+-            ResourceLocation name = ResourceLocation.fromNamespaceAndPath(namespace, path + "_stairs");
++            Identifier name = Identifier.fromNamespaceAndPath(namespace, path + "_stairs");
+             Registry.register(BuiltInRegistries.BLOCK, name, stairBlock);
+             autoRegisterBlock.setStairs(stairBlock);
+             if (autoRegisterBlock.hasItemProperties()) {
+@@ -52,7 +52,7 @@ public class BlockModuleFabric {
+         }
+         if (autoRegisterBlock.hasSlab()) {
+             Block slabBlock = new SlabBlock(BlockBehaviour.Properties.ofLegacyCopy(block));
+-            ResourceLocation name = ResourceLocation.fromNamespaceAndPath(namespace, path + "_slab");
++            Identifier name = Identifier.fromNamespaceAndPath(namespace, path + "_slab");
+             Registry.register(BuiltInRegistries.BLOCK, name, slabBlock);
+             autoRegisterBlock.setSlab(slabBlock);
+             if (autoRegisterBlock.hasItemProperties()) {
+@@ -61,7 +61,7 @@ public class BlockModuleFabric {
+         }
+         if (autoRegisterBlock.hasFence()) {
+             Block fenceBlock = new FenceBlock(BlockBehaviour.Properties.ofLegacyCopy(block));
+-            ResourceLocation name = ResourceLocation.fromNamespaceAndPath(namespace, path + "_fence");
++            Identifier name = Identifier.fromNamespaceAndPath(namespace, path + "_fence");
+             Registry.register(BuiltInRegistries.BLOCK, name, fenceBlock);
+             autoRegisterBlock.setFence(fenceBlock);
+             if (autoRegisterBlock.hasItemProperties()) {
+@@ -70,7 +70,7 @@ public class BlockModuleFabric {
+         }
+         if (autoRegisterBlock.hasFenceGate()) {
+             Block fenceGateBlock = new FenceGateBlock(autoRegisterBlock.getFenceGateWoodType(), BlockBehaviour.Properties.ofLegacyCopy(block));
+-            ResourceLocation name = ResourceLocation.fromNamespaceAndPath(namespace, path + "_fence_gate");
++            Identifier name = Identifier.fromNamespaceAndPath(namespace, path + "_fence_gate");
+             Registry.register(BuiltInRegistries.BLOCK, name, fenceGateBlock);
+             autoRegisterBlock.setFenceGate(fenceGateBlock);
+             if (autoRegisterBlock.hasItemProperties()) {
+@@ -79,7 +79,7 @@ public class BlockModuleFabric {
+         }
+         if (autoRegisterBlock.hasWall()) {
+             Block wallBlock = new WallBlock(BlockBehaviour.Properties.ofLegacyCopy(block));
+-            ResourceLocation name = ResourceLocation.fromNamespaceAndPath(namespace, path + "_wall");
++            Identifier name = Identifier.fromNamespaceAndPath(namespace, path + "_wall");
+             Registry.register(BuiltInRegistries.BLOCK, name, wallBlock);
+             autoRegisterBlock.setWall(wallBlock);
+             if (autoRegisterBlock.hasItemProperties()) {
+diff --git a/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/ItemModuleFabric.java b/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/ItemModuleFabric.java
+index 216c677..9751be2 100644
+--- a/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/ItemModuleFabric.java
++++ b/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/ItemModuleFabric.java
+@@ -5,7 +5,7 @@ import com.yungnickyoung.minecraft.yungsapi.autoregister.AutoRegistrationManager
+ import com.yungnickyoung.minecraft.yungsapi.autoregister.AutoRegisterField;
+ import net.minecraft.core.Registry;
+ import net.minecraft.core.registries.BuiltInRegistries;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.item.BlockItem;
+ import net.minecraft.world.item.Item;
+ import net.minecraft.world.level.block.Block;
+@@ -31,7 +31,7 @@ public class ItemModuleFabric {
+         data.markProcessed();
+     }
+ 
+-    public static void registerBlockItem(ResourceLocation resourceLocation, Block block, Item.Properties itemProperties) {
++    public static void registerBlockItem(Identifier resourceLocation, Block block, Item.Properties itemProperties) {
+         Registry.register(BuiltInRegistries.ITEM, resourceLocation, new BlockItem(block, itemProperties));
+     }
+ }
+\ No newline at end of file
+diff --git a/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/services/FabricAutoRegisterHelper.java b/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/services/FabricAutoRegisterHelper.java
+index ae01a1b..8ccc616 100644
+--- a/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/services/FabricAutoRegisterHelper.java
++++ b/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/services/FabricAutoRegisterHelper.java
+@@ -8,7 +8,7 @@ import com.yungnickyoung.minecraft.yungsapi.module.*;
+ import net.fabricmc.fabric.api.registry.CompostingChanceRegistry;
+ import net.fabricmc.fabric.api.registry.FabricBrewingRecipeRegistryBuilder;
+ import net.minecraft.core.Holder;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.item.Item;
+ import net.minecraft.world.item.alchemy.Potion;
+ import org.reflections.Reflections;
+@@ -48,7 +48,7 @@ public class FabricAutoRegisterHelper implements IAutoRegisterHelper {
+                             // Impossible?
+                             throw new RuntimeException(e);
+                         }
+-                        ResourceLocation resourceLocation = ResourceLocation.fromNamespaceAndPath(modId, name);
++                        Identifier resourceLocation = Identifier.fromNamespaceAndPath(modId, name);
+                         AutoRegisterField autoRegisterField = new AutoRegisterField(o, resourceLocation);
+                         AutoRegisterFieldRouter.queueField(autoRegisterField);
+                     });
+diff --git a/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/processor/StructureProcessingContext.java b/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/processor/StructureProcessingContext.java
+index 2d25256..6e3ac6e 100644
+--- a/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/processor/StructureProcessingContext.java
++++ b/Fabric/src/main/java/com/yungnickyoung/minecraft/yungsapi/world/processor/StructureProcessingContext.java
+@@ -1,6 +1,6 @@
+ package com.yungnickyoung.minecraft.yungsapi.world.processor;
+ 
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.world.level.ServerLevelAccessor;
+ import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
+diff --git a/NeoForge/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/BlockModuleNeoForge.java b/NeoForge/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/BlockModuleNeoForge.java
+index 6e2d828..de5fb6c 100644
+--- a/NeoForge/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/BlockModuleNeoForge.java
++++ b/NeoForge/src/main/java/com/yungnickyoung/minecraft/yungsapi/module/BlockModuleNeoForge.java
+@@ -5,7 +5,7 @@ import com.yungnickyoung.minecraft.yungsapi.api.autoregister.AutoRegisterBlock;
+ import com.yungnickyoung.minecraft.yungsapi.autoregister.AutoRegisterField;
+ import com.yungnickyoung.minecraft.yungsapi.autoregister.AutoRegistrationManager;
+ import net.minecraft.core.registries.Registries;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.item.Item;
+ import net.minecraft.world.level.block.Block;
+ import net.minecraft.world.level.block.FenceBlock;
+@@ -47,7 +47,7 @@ public class BlockModuleNeoForge {
+         // Register associated Blocks and their BlockItems, if applicable
+         if (autoRegisterBlock.hasStairs()) {
+             Block stairBlock = new StairBlock(block.defaultBlockState(), BlockBehaviour.Properties.ofLegacyCopy(block));
+-            ResourceLocation name = ResourceLocation.fromNamespaceAndPath(namespace, path + "_stairs");
++            Identifier name = Identifier.fromNamespaceAndPath(namespace, path + "_stairs");
+             helper.register(name, stairBlock);
+             autoRegisterBlock.setStairs(stairBlock);
+             if (autoRegisterBlock.hasItemProperties()) {
+@@ -56,7 +56,7 @@ public class BlockModuleNeoForge {
+         }
+         if (autoRegisterBlock.hasSlab()) {
+             Block slabBlock = new SlabBlock(BlockBehaviour.Properties.ofLegacyCopy(block));
+-            ResourceLocation name = ResourceLocation.fromNamespaceAndPath(namespace, path + "_slab");
++            Identifier name = Identifier.fromNamespaceAndPath(namespace, path + "_slab");
+             helper.register(name, slabBlock);
+             autoRegisterBlock.setSlab(slabBlock);
+             if (autoRegisterBlock.hasItemProperties()) {
+@@ -65,7 +65,7 @@ public class BlockModuleNeoForge {
+         }
+         if (autoRegisterBlock.hasFence()) {
+             Block fenceBlock = new FenceBlock(BlockBehaviour.Properties.ofLegacyCopy(block));
+-            ResourceLocation name = ResourceLocation.fromNamespaceAndPath(namespace, path + "_fence");
++            Identifier name = Identifier.fromNamespaceAndPath(namespace, path + "_fence");
+             helper.register(name, fenceBlock);
+             autoRegisterBlock.setFence(fenceBlock);
+             if (autoRegisterBlock.hasItemProperties()) {
+@@ -74,7 +74,7 @@ public class BlockModuleNeoForge {
+         }
+         if (autoRegisterBlock.hasFenceGate()) {
+             Block fenceGateBlock = new FenceGateBlock(autoRegisterBlock.getFenceGateWoodType(), BlockBehaviour.Properties.ofLegacyCopy(block));
+-            ResourceLocation name = ResourceLocation.fromNamespaceAndPath(namespace, path + "_fence_gate");
++            Identifier name = Identifier.fromNamespaceAndPath(namespace, path + "_fence_gate");
+             helper.register(name, fenceGateBlock);
+             autoRegisterBlock.setFenceGate(fenceGateBlock);
+             if (autoRegisterBlock.hasItemProperties()) {
+@@ -83,7 +83,7 @@ public class BlockModuleNeoForge {
+         }
+         if (autoRegisterBlock.hasWall()) {
+             Block wallBlock = new WallBlock(BlockBehaviour.Properties.ofLegacyCopy(block));
+-            ResourceLocation name = ResourceLocation.fromNamespaceAndPath(namespace, path + "_wall");
++            Identifier name = Identifier.fromNamespaceAndPath(namespace, path + "_wall");
+             helper.register(name, wallBlock);
+             autoRegisterBlock.setWall(wallBlock);
+             if (autoRegisterBlock.hasItemProperties()) {
+@@ -94,6 +94,6 @@ public class BlockModuleNeoForge {
+         data.markProcessed();
+     }
+ 
+-    public record ExtraBlockData(Block block, Supplier<Item.Properties> itemProperties, ResourceLocation blockRegisteredName) {
++    public record ExtraBlockData(Block block, Supplier<Item.Properties> itemProperties, Identifier blockRegisteredName) {
+     }
+ }
+\ No newline at end of file
+diff --git a/NeoForge/src/main/java/com/yungnickyoung/minecraft/yungsapi/services/NeoForgeAutoRegisterHelper.java b/NeoForge/src/main/java/com/yungnickyoung/minecraft/yungsapi/services/NeoForgeAutoRegisterHelper.java
+index 69d8cd3..d1fd830 100644
+--- a/NeoForge/src/main/java/com/yungnickyoung/minecraft/yungsapi/services/NeoForgeAutoRegisterHelper.java
++++ b/NeoForge/src/main/java/com/yungnickyoung/minecraft/yungsapi/services/NeoForgeAutoRegisterHelper.java
+@@ -6,7 +6,7 @@ import com.yungnickyoung.minecraft.yungsapi.autoregister.AutoRegisterField;
+ import com.yungnickyoung.minecraft.yungsapi.autoregister.AutoRegisterFieldRouter;
+ import com.yungnickyoung.minecraft.yungsapi.autoregister.AutoRegistrationManager;
+ import com.yungnickyoung.minecraft.yungsapi.module.*;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.item.Item;
+ import net.minecraft.world.item.alchemy.Potion;
+ import net.neoforged.fml.ModList;
+@@ -79,7 +79,7 @@ public class NeoForgeAutoRegisterHelper implements IAutoRegisterHelper {
+ 
+                     // Queue for registration
+                     String name = (String) data.annotationData().get("value");
+-                    AutoRegisterField autoRegisterField = new AutoRegisterField(o, ResourceLocation.fromNamespaceAndPath(modId, name));
++                    AutoRegisterField autoRegisterField = new AutoRegisterField(o, Identifier.fromNamespaceAndPath(modId, name));
+                     AutoRegisterFieldRouter.queueField(autoRegisterField);
+                 });
+     }
+diff --git a/build.gradle b/build.gradle
+index f293a9f..f9b70d7 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -1,5 +1,5 @@
+ plugins {
+-    id 'fabric-loom' version '1.10-SNAPSHOT' apply false
++    id 'fabric-loom' version '1.13-SNAPSHOT' apply false
+     id "org.jetbrains.gradle.plugin.idea-ext" version "1.1.7" // required for VanillaGradle and NeoForge to work together?
+     id 'org.spongepowered.mixin' version '0.7-SNAPSHOT' apply false
+     id 'net.darkhax.curseforgegradle' version "${cursegradle_version}" apply false // curseforge publishing
+diff --git a/gradle.properties b/gradle.properties
+index c8f7cff..4f51b48 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -11,23 +11,23 @@ mod_description=API Library for YUNG's minecraft mods.
+ mod_credits=Thanks so much to all my patrons!
+ license=LGPLv3
+ maven_group=com.yungnickyoung.minecraft.yungsapi
+-mc_version=1.21.4
+-mc_version_range=[1.21.4, 1.22)
+-mc_version_range_fabric=>=1.21.4
+-parchment_minecraft=1.21.4
+-parchment_version=2024.12.22
++mc_version=1.21.11
++mc_version_range=[1.21.11, 1.22)
++mc_version_range_fabric=>=1.21.11
++parchment_minecraft=1.21.11
++parchment_version=2025.12.20
+ 
+ # CurseForge/Modrinth Publishing
+ cursegradle_version=1.1.15
+-compatible_versions=1.21.4
++compatible_versions=1.21.11
+ curseforge_project_id_fabric=421649
+ curseforge_project_id_neoforge=421850
+ modrinth_project_id=Ua7DFN59
+ debug_publish=true
+ 
+ # Fabric
+-fabric_version=0.112.2
+-fabric_loader_version=0.16.9
++fabric_version=0.141.6
++fabric_loader_version=0.20.1
+ 
+ # NeoForge
+ neoforge_version=21.4.124
+diff --git a/gradle/wrapper/gradle-wrapper.properties b/gradle/wrapper/gradle-wrapper.properties
+index d6e308a..3ae1e2f 100644
+--- a/gradle/wrapper/gradle-wrapper.properties
++++ b/gradle/wrapper/gradle-wrapper.properties
+@@ -1,5 +1,5 @@
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+-distributionUrl=https\://services.gradle.org/distributions/gradle-8.12-bin.zip
++distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+ zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
+diff --git a/settings.gradle b/settings.gradle
+index a327d80..80d493c 100644
+--- a/settings.gradle
++++ b/settings.gradle
+@@ -10,7 +10,7 @@ pluginManagement {
+                 }
+             }
+             filter {
+-                includeGroup("net.fabricmc")
++                includeGroupAndSubgroups("net.fabricmc")
+                 includeGroup("fabric-loom")
+             }
+         }
+-- 
+2.53.0.windows.2
+

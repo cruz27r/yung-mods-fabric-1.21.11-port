@@ -1,0 +1,7 @@
+private/
+upstream/
+*.jar
+build/
+.gradle/
+work/
+dist/

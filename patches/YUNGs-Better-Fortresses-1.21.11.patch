@@ -1,0 +1,491 @@
+From ed6fa446c1dbeea7d0ab5e01953b9a2bf7902fa2 Mon Sep 17 00:00:00 2001
+From: port <port@example.invalid>
+Date: Wed, 25 Nov 2026 08:29:03 -0500
+Subject: [PATCH] Port YUNGs-Better-Fortresses to Minecraft 1.21.11 (Fabric)
+
+---
+ .../BetterFortressesCommon.java               |  6 +--
+ .../LocateVanillaFortressCommandMixin.java    |  4 +-
+ .../world/processor/BridgeArchProcessor.java  | 46 +++++++++----------
+ .../world/processor/LiquidBlockProcessor.java |  2 -
+ .../world/processor/NetherWartProcessor.java  |  2 -
+ .../world/processor/PillarProcessor.java      |  4 +-
+ .../RedSandstoneStairsProcessor.java          |  4 +-
+ .../world/processor/StairPillarProcessor.java |  6 +--
+ .../world/ItemFrameProcessor.java             | 22 ++++-----
+ build.gradle                                  |  2 +-
+ .../src/main/groovy/multiloader-common.gradle |  1 +
+ gradle.properties                             | 20 ++++----
+ gradle/wrapper/gradle-wrapper.properties      |  2 +-
+ settings.gradle                               |  2 +-
+ 14 files changed, 56 insertions(+), 67 deletions(-)
+
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/BetterFortressesCommon.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/BetterFortressesCommon.java
+index 43d1111..8b9e020 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/BetterFortressesCommon.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/BetterFortressesCommon.java
+@@ -3,7 +3,7 @@ package com.yungnickyoung.minecraft.betterfortresses;
+ import com.yungnickyoung.minecraft.betterfortresses.module.ConfigModule;
+ import com.yungnickyoung.minecraft.betterfortresses.services.Services;
+ import com.yungnickyoung.minecraft.yungsapi.api.YungAutoRegister;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import org.apache.logging.log4j.LogManager;
+ import org.apache.logging.log4j.Logger;
+ 
+@@ -18,7 +18,7 @@ public class BetterFortressesCommon {
+         Services.MODULES.loadModules();
+     }
+ 
+-    public static ResourceLocation id(String path) {
+-        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
++    public static Identifier id(String path) {
++        return Identifier.fromNamespaceAndPath(MOD_ID, path);
+     }
+ }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/mixin/LocateVanillaFortressCommandMixin.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/mixin/LocateVanillaFortressCommandMixin.java
+index 7a224ba..45eefe1 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/mixin/LocateVanillaFortressCommandMixin.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/mixin/LocateVanillaFortressCommandMixin.java
+@@ -7,7 +7,7 @@ import net.minecraft.commands.CommandSourceStack;
+ import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
+ import net.minecraft.network.chat.Component;
+ import net.minecraft.resources.ResourceKey;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.server.commands.LocateCommand;
+ import net.minecraft.world.level.levelgen.structure.Structure;
+ import org.spongepowered.asm.mixin.Mixin;
+@@ -32,7 +32,7 @@ public class LocateVanillaFortressCommandMixin {
+                                                                        ResourceOrTagKeyArgument.Result<Structure> result,
+                                                                        CallbackInfoReturnable<Integer> ci) throws CommandSyntaxException {
+         Optional<ResourceKey<Structure>> optional = result.unwrap().left();
+-        if (BetterFortressesCommon.CONFIG.general.disableVanillaFortresses && optional.isPresent() && optional.get().location().equals(ResourceLocation.withDefaultNamespace("fortress"))) {
++        if (BetterFortressesCommon.CONFIG.general.disableVanillaFortresses && optional.isPresent() && optional.get().identifier().equals(Identifier.withDefaultNamespace("fortress"))) {
+             throw OLD_FORTRESS_EXCEPTION.create();
+         }
+     }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/BridgeArchProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/BridgeArchProcessor.java
+index 339b74c..d57d46b 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/BridgeArchProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/BridgeArchProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betterfortresses.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betterfortresses.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+ import net.minecraft.server.level.WorldGenRegion;
+@@ -22,7 +21,6 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
+ import javax.annotation.ParametersAreNonnullByDefault;
+ 
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class BridgeArchProcessor extends StructureProcessor {
+     public static final BridgeArchProcessor INSTANCE = new BridgeArchProcessor();
+     public static final MapCodec<BridgeArchProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+@@ -56,10 +54,10 @@ public class BridgeArchProcessor extends StructureProcessor {
+             placeBlock(worldGenRegion, levelReader, mutable, Blocks.NETHER_BRICKS.defaultBlockState());
+             mutable.move(Direction.UP);
+             placeWallBlock(worldGenRegion, levelReader, mutable, Blocks.NETHER_BRICK_WALL.defaultBlockState()
+-                    .setValue(WallBlock.EAST_WALL, facing == Direction.EAST || (isJunction && facing == Direction.NORTH) ? WallSide.LOW : WallSide.NONE)
+-                    .setValue(WallBlock.SOUTH_WALL, facing == Direction.SOUTH || (isJunction && facing == Direction.EAST) ? WallSide.LOW : WallSide.NONE)
+-                    .setValue(WallBlock.WEST_WALL, facing == Direction.WEST || (isJunction && facing == Direction.SOUTH) ? WallSide.LOW : WallSide.NONE)
+-                    .setValue(WallBlock.NORTH_WALL, facing == Direction.NORTH || (isJunction && facing == Direction.WEST) ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.EAST, facing == Direction.EAST || (isJunction && facing == Direction.NORTH) ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.SOUTH, facing == Direction.SOUTH || (isJunction && facing == Direction.EAST) ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.WEST, facing == Direction.WEST || (isJunction && facing == Direction.SOUTH) ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.NORTH, facing == Direction.NORTH || (isJunction && facing == Direction.WEST) ? WallSide.LOW : WallSide.NONE)
+             );
+ 
+             // Second pillar
+@@ -69,10 +67,10 @@ public class BridgeArchProcessor extends StructureProcessor {
+                     .setValue(StairBlock.FACING, facing.getOpposite()));
+             mutable.move(Direction.UP);
+             placeWallBlock(worldGenRegion, levelReader, mutable, Blocks.NETHER_BRICK_WALL.defaultBlockState()
+-                            .setValue(WallBlock.EAST_WALL, facing == Direction.EAST ? WallSide.LOW : WallSide.NONE)
+-                            .setValue(WallBlock.SOUTH_WALL, facing == Direction.SOUTH ? WallSide.LOW : WallSide.NONE)
+-                            .setValue(WallBlock.WEST_WALL, facing == Direction.WEST ? WallSide.LOW : WallSide.NONE)
+-                            .setValue(WallBlock.NORTH_WALL, facing == Direction.NORTH ? WallSide.LOW : WallSide.NONE)
++                            .setValue(WallBlock.EAST, facing == Direction.EAST ? WallSide.LOW : WallSide.NONE)
++                            .setValue(WallBlock.SOUTH, facing == Direction.SOUTH ? WallSide.LOW : WallSide.NONE)
++                            .setValue(WallBlock.WEST, facing == Direction.WEST ? WallSide.LOW : WallSide.NONE)
++                            .setValue(WallBlock.NORTH, facing == Direction.NORTH ? WallSide.LOW : WallSide.NONE)
+             );
+ 
+             // Middle
+@@ -85,10 +83,10 @@ public class BridgeArchProcessor extends StructureProcessor {
+             mutable.move(facing);
+             mutable.move(Direction.DOWN);
+             placeWallBlock(worldGenRegion, levelReader, mutable, Blocks.NETHER_BRICK_WALL.defaultBlockState()
+-                    .setValue(WallBlock.EAST_WALL, facing == Direction.WEST ? WallSide.LOW : WallSide.NONE)
+-                    .setValue(WallBlock.SOUTH_WALL, facing == Direction.NORTH ? WallSide.LOW : WallSide.NONE)
+-                    .setValue(WallBlock.WEST_WALL, facing == Direction.EAST ? WallSide.LOW : WallSide.NONE)
+-                    .setValue(WallBlock.NORTH_WALL, facing == Direction.SOUTH ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.EAST, facing == Direction.WEST ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.SOUTH, facing == Direction.NORTH ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.WEST, facing == Direction.EAST ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.NORTH, facing == Direction.SOUTH ? WallSide.LOW : WallSide.NONE)
+             );
+             mutable.move(Direction.DOWN);
+             placeBlock(worldGenRegion, levelReader, mutable, Blocks.NETHER_BRICK_STAIRS.defaultBlockState()
+@@ -98,10 +96,10 @@ public class BridgeArchProcessor extends StructureProcessor {
+             // Fifth pillar
+             mutable.move(facing);
+             placeWallBlock(worldGenRegion, levelReader, mutable, Blocks.NETHER_BRICK_WALL.defaultBlockState()
+-                    .setValue(WallBlock.EAST_WALL, facing == Direction.WEST || (isJunction && facing == Direction.NORTH) ? WallSide.LOW : WallSide.NONE)
+-                    .setValue(WallBlock.SOUTH_WALL, facing == Direction.NORTH || (isJunction && facing == Direction.EAST) ? WallSide.LOW : WallSide.NONE)
+-                    .setValue(WallBlock.WEST_WALL, facing == Direction.EAST || (isJunction && facing == Direction.SOUTH) ? WallSide.LOW : WallSide.NONE)
+-                    .setValue(WallBlock.NORTH_WALL, facing == Direction.SOUTH || (isJunction && facing == Direction.WEST) ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.EAST, facing == Direction.WEST || (isJunction && facing == Direction.NORTH) ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.SOUTH, facing == Direction.NORTH || (isJunction && facing == Direction.EAST) ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.WEST, facing == Direction.EAST || (isJunction && facing == Direction.SOUTH) ? WallSide.LOW : WallSide.NONE)
++                    .setValue(WallBlock.NORTH, facing == Direction.SOUTH || (isJunction && facing == Direction.WEST) ? WallSide.LOW : WallSide.NONE)
+             );
+             mutable.move(Direction.DOWN);
+             placeBlock(worldGenRegion, levelReader, mutable, Blocks.NETHER_BRICKS.defaultBlockState());
+@@ -117,7 +115,7 @@ public class BridgeArchProcessor extends StructureProcessor {
+ 
+     private void placeBlock(WorldGenRegion worldGenRegion, LevelReader levelReader, BlockPos blockPos, BlockState blockState) {
+         if (worldGenRegion.getCenter().equals(new ChunkPos(blockPos))) {
+-            levelReader.getChunk(blockPos).setBlockState(blockPos, blockState, false);
++            levelReader.getChunk(blockPos).setBlockState(blockPos, blockState, 0);
+         }
+     }
+ 
+@@ -133,12 +131,12 @@ public class BridgeArchProcessor extends StructureProcessor {
+             mutable.set(blockPos).move(Direction.WEST);
+             boolean west = levelReader.getChunk(mutable).getBlockState(mutable).isFaceSturdy(levelReader, mutable, Direction.EAST);
+             levelReader.getChunk(blockPos).setBlockState(blockPos, blockState
+-                    .setValue(WallBlock.NORTH_WALL, north ? WallSide.LOW : blockState.getValue(WallBlock.NORTH_WALL))
+-                    .setValue(WallBlock.EAST_WALL, east ? WallSide.LOW : blockState.getValue(WallBlock.EAST_WALL))
+-                    .setValue(WallBlock.SOUTH_WALL, south ? WallSide.LOW : blockState.getValue(WallBlock.SOUTH_WALL))
+-                    .setValue(WallBlock.WEST_WALL, west ? WallSide.LOW : blockState.getValue(WallBlock.WEST_WALL))
++                    .setValue(WallBlock.NORTH, north ? WallSide.LOW : blockState.getValue(WallBlock.NORTH))
++                    .setValue(WallBlock.EAST, east ? WallSide.LOW : blockState.getValue(WallBlock.EAST))
++                    .setValue(WallBlock.SOUTH, south ? WallSide.LOW : blockState.getValue(WallBlock.SOUTH))
++                    .setValue(WallBlock.WEST, west ? WallSide.LOW : blockState.getValue(WallBlock.WEST))
+                     .setValue(WallBlock.UP, true),
+-                    false);
++                    0);
+         }
+     }
+ }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/LiquidBlockProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/LiquidBlockProcessor.java
+index 70f39e3..98f1443 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/LiquidBlockProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/LiquidBlockProcessor.java
+@@ -3,7 +3,6 @@ package com.yungnickyoung.minecraft.betterfortresses.world.processor;
+ import com.mojang.serialization.MapCodec;
+ import com.mojang.serialization.codecs.RecordCodecBuilder;
+ import com.yungnickyoung.minecraft.betterfortresses.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.server.level.WorldGenRegion;
+ import net.minecraft.world.level.ChunkPos;
+@@ -18,7 +17,6 @@ import net.minecraft.world.level.material.Fluids;
+ import javax.annotation.ParametersAreNonnullByDefault;
+ 
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class LiquidBlockProcessor extends StructureProcessor {
+     public static final MapCodec<LiquidBlockProcessor> CODEC = RecordCodecBuilder.mapCodec(instance -> instance
+             .group(
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/NetherWartProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/NetherWartProcessor.java
+index 87bd720..860a57b 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/NetherWartProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/NetherWartProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betterfortresses.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betterfortresses.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.level.LevelReader;
+@@ -15,7 +14,6 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
+ import javax.annotation.ParametersAreNonnullByDefault;
+ 
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class NetherWartProcessor extends StructureProcessor {
+     public static final NetherWartProcessor INSTANCE = new NetherWartProcessor();
+     public static final MapCodec<NetherWartProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/PillarProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/PillarProcessor.java
+index 04cc189..90c7217 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/PillarProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/PillarProcessor.java
+@@ -6,7 +6,6 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
+ import com.yungnickyoung.minecraft.betterfortresses.module.StructureProcessorTypeModule;
+ import com.yungnickyoung.minecraft.yungsapi.api.world.randomize.BlockStateRandomizer;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.context.StructureContext;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+ import net.minecraft.server.level.WorldGenRegion;
+@@ -22,7 +21,6 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
+ import javax.annotation.ParametersAreNonnullByDefault;
+ 
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class PillarProcessor extends StructureProcessor {
+     public static final MapCodec<PillarProcessor> CODEC = RecordCodecBuilder.mapCodec(instance -> instance
+             .group(
+@@ -70,7 +68,7 @@ public class PillarProcessor extends StructureProcessor {
+                         .pieceMinY(mutable.getY())
+                         .pieceMaxY(mutable.getY())
+                         .build();
+-                levelReader.getChunk(mutable).setBlockState(mutable, this.pillarStates.get(random, ctx), false);
++                levelReader.getChunk(mutable).setBlockState(mutable, this.pillarStates.get(random, ctx), 0);
+ 
+                 // Update to next position
+                 mutable.move(Direction.DOWN);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/RedSandstoneStairsProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/RedSandstoneStairsProcessor.java
+index bf6a453..d742e4a 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/RedSandstoneStairsProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/RedSandstoneStairsProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betterfortresses.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betterfortresses.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+ import net.minecraft.server.level.WorldGenRegion;
+@@ -21,7 +20,6 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
+ import javax.annotation.ParametersAreNonnullByDefault;
+ 
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class RedSandstoneStairsProcessor extends StructureProcessor {
+     public static final RedSandstoneStairsProcessor INSTANCE = new RedSandstoneStairsProcessor();
+     public static final MapCodec<RedSandstoneStairsProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+@@ -58,7 +56,7 @@ public class RedSandstoneStairsProcessor extends StructureProcessor {
+             while (mutable.getY() > levelReader.getMinY()
+                     && mutable.getY() < levelReader.getMaxY()
+                     && (currBlockState.isAir() || !levelReader.getFluidState(mutable).isEmpty())) {
+-                levelReader.getChunk(mutable).setBlockState(mutable, Blocks.NETHER_BRICKS.defaultBlockState(), false);
++                levelReader.getChunk(mutable).setBlockState(mutable, Blocks.NETHER_BRICKS.defaultBlockState(), 0);
+ 
+                 // Update to next position
+                 mutable.move(Direction.DOWN);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/StairPillarProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/StairPillarProcessor.java
+index a4c6b26..b1a5edf 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/StairPillarProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/processor/StairPillarProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betterfortresses.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betterfortresses.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+ import net.minecraft.server.level.WorldGenRegion;
+@@ -21,7 +20,6 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemp
+ import javax.annotation.ParametersAreNonnullByDefault;
+ 
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class StairPillarProcessor extends StructureProcessor {
+     public static final StairPillarProcessor INSTANCE = new StairPillarProcessor();
+     public static final MapCodec<StairPillarProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+@@ -63,7 +61,7 @@ public class StairPillarProcessor extends StructureProcessor {
+                             .setValue(StairBlock.FACING, facing.getOpposite())
+                             .setValue(StairBlock.HALF, half)
+                             .setValue(StairBlock.SHAPE, shape),
+-                    false);
++                    0);
+ 
+             // Generate rest of pillar
+             mutable.move(Direction.DOWN);
+@@ -71,7 +69,7 @@ public class StairPillarProcessor extends StructureProcessor {
+             while (mutable.getY() > levelReader.getMinY()
+                     && mutable.getY() < levelReader.getMaxY()
+                     && (currBlockState.isAir() || !levelReader.getFluidState(mutable).isEmpty())) {
+-                levelReader.getChunk(mutable).setBlockState(mutable, Blocks.RED_NETHER_BRICKS.defaultBlockState(), false);
++                levelReader.getChunk(mutable).setBlockState(mutable, Blocks.RED_NETHER_BRICKS.defaultBlockState(), 0);
+ 
+                 // Update to next position
+                 mutable.move(Direction.DOWN);
+diff --git a/Fabric/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/ItemFrameProcessor.java b/Fabric/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/ItemFrameProcessor.java
+index b80d0f7..523d490 100644
+--- a/Fabric/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/ItemFrameProcessor.java
++++ b/Fabric/src/main/java/com/yungnickyoung/minecraft/betterfortresses/world/ItemFrameProcessor.java
+@@ -4,7 +4,7 @@ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betterfortresses.BetterFortressesCommon;
+ import com.yungnickyoung.minecraft.betterfortresses.module.StructureProcessorTypeModule;
+ import com.yungnickyoung.minecraft.yungsapi.world.processor.StructureEntityProcessor;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.registries.BuiltInRegistries;
+ import net.minecraft.nbt.CompoundTag;
+@@ -36,13 +36,13 @@ public class ItemFrameProcessor extends StructureEntityProcessor {
+                                                                StructureTemplate.StructureEntityInfo localEntityInfo,
+                                                                StructureTemplate.StructureEntityInfo globalEntityInfo,
+                                                                StructurePlaceSettings structurePlaceSettings) {
+-        if (globalEntityInfo.nbt.getString("id").equals("minecraft:item_frame")) {
++        if (globalEntityInfo.nbt.getStringOr("id", "").equals("minecraft:item_frame")) {
+             RandomSource random = structurePlaceSettings.getRandom(globalEntityInfo.blockPos);
+ 
+             // Determine which pool we are grabbing from
+             String item;
+             try {
+-                item = globalEntityInfo.nbt.getCompound("Item").get("id").toString();
++                item = globalEntityInfo.nbt.getCompoundOrEmpty("Item").get("id").toString();
+             } catch (Exception e) {
+                 BetterFortressesCommon.LOGGER.info("Unable to randomize item frame at {}", globalEntityInfo.blockPos);
+                 return globalEntityInfo;
+@@ -56,7 +56,7 @@ public class ItemFrameProcessor extends StructureEntityProcessor {
+                     if (randomItemString.equals("minecraft:air")) {
+                         return null;
+                     }
+-                    newNBT.getCompound("Item").putString("id", randomItemString);
++                    newNBT.getCompoundOrEmpty("Item").putString("id", randomItemString);
+                     break;
+                 }
+                 case "\"minecraft:iron_ingot\"": { // Loot pool
+@@ -64,7 +64,7 @@ public class ItemFrameProcessor extends StructureEntityProcessor {
+                     if (randomItemString.equals("minecraft:air")) {
+                         return null;
+                     }
+-                    newNBT.getCompound("Item").putString("id", randomItemString);
++                    newNBT.getCompoundOrEmpty("Item").putString("id", randomItemString);
+                     break;
+                 }
+                 case "\"minecraft:cobweb\"": { // Study pool
+@@ -91,15 +91,15 @@ public class ItemFrameProcessor extends StructureEntityProcessor {
+                             lvl = random.nextFloat() < 0.75f ? 1 : 2;
+                         }
+ 
+-                        CompoundTag componentsTag = newNBT.getCompound("Item").getCompound("components");
++                        CompoundTag componentsTag = newNBT.getCompoundOrEmpty("Item").getCompoundOrEmpty("components");
+                         componentsTag.put("minecraft:stored_enchantments", Util.make(new CompoundTag(), enchantmentsTag -> {
+                             enchantmentsTag.put("levels", Util.make(new CompoundTag(), levelsTag -> {
+                                 levelsTag.putInt(enchantment, lvl);
+                             }));
+                         }));
+-                        newNBT.getCompound("Item").put("components", componentsTag);
++                        newNBT.getCompoundOrEmpty("Item").put("components", componentsTag);
+                     }
+-                    newNBT.getCompound("Item").putString("id", randomItemString);
++                    newNBT.getCompoundOrEmpty("Item").putString("id", randomItemString);
+                     break;
+                 }
+                 case "\"minecraft:apple\"": { // Mess Hall pool
+@@ -107,7 +107,7 @@ public class ItemFrameProcessor extends StructureEntityProcessor {
+                     if (randomItemString.equals("minecraft:air")) {
+                         return null;
+                     }
+-                    newNBT.getCompound("Item").putString("id", randomItemString);
++                    newNBT.getCompoundOrEmpty("Item").putString("id", randomItemString);
+                     break;
+                 }
+                 case "\"minecraft:nether_wart\"": { // Alchemy ingredients pool
+@@ -115,12 +115,12 @@ public class ItemFrameProcessor extends StructureEntityProcessor {
+                     if (randomItemString.equals("minecraft:air")) {
+                         return null;
+                     }
+-                    newNBT.getCompound("Item").putString("id", randomItemString);
++                    newNBT.getCompoundOrEmpty("Item").putString("id", randomItemString);
+                     break;
+                 }
+                 case "\"minecraft:glowstone_dust\"":  // In alchemy room. 50% chance of blaze powder
+                     if (random.nextBoolean()) {
+-                        newNBT.getCompound("Item").putString("id", "minecraft:blaze_powder");
++                        newNBT.getCompoundOrEmpty("Item").putString("id", "minecraft:blaze_powder");
+                     } else {
+                         return null;
+                     }
+diff --git a/build.gradle b/build.gradle
+index 081b607..eb79b1a 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -1,5 +1,5 @@
+ plugins {
+-    id 'fabric-loom' version '1.10-SNAPSHOT' apply false
++    id 'fabric-loom' version '1.13-SNAPSHOT' apply false
+     id "org.jetbrains.gradle.plugin.idea-ext" version "1.1.7" // required for NeoGradle
+     id 'org.spongepowered.mixin' version '0.7-SNAPSHOT' apply false
+     id 'net.darkhax.curseforgegradle' version "${curseforgegradle_version}" apply false // curseforge publishing
+diff --git a/buildSrc/src/main/groovy/multiloader-common.gradle b/buildSrc/src/main/groovy/multiloader-common.gradle
+index 5f9f940..e245134 100644
+--- a/buildSrc/src/main/groovy/multiloader-common.gradle
++++ b/buildSrc/src/main/groovy/multiloader-common.gradle
+@@ -16,6 +16,7 @@ java {
+ }
+ 
+ repositories {
++    mavenLocal()
+     mavenCentral()
+     // https://docs.gradle.org/current/userguide/declaring_repositories.html#declaring_content_exclusively_found_in_one_repository
+     exclusiveContent {
+diff --git a/gradle.properties b/gradle.properties
+index 8ee6791..35e54bd 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -11,15 +11,15 @@ mod_description=A complete redesign of Minecraft's Nether Fortresses!
+ mod_credits=Thanks so much to all my patrons!
+ license=LGPLv3
+ maven_group=com.yungnickyoung.minecraft.betterfortresses
+-mc_version=1.21.4
+-mc_version_range=[1.21.4, 1.22)
+-mc_version_range_fabric=>=1.21.4
+-parchment_minecraft=1.21.4
+-parchment_version=2024.12.22
++mc_version=1.21.11
++mc_version_range=[1.21.11, 1.22)
++mc_version_range_fabric=>=1.21.11
++parchment_minecraft=1.21.11
++parchment_version=2025.12.20
+ 
+ # CurseForge/Modrinth Publishing
+ curseforgegradle_version=1.1.15
+-compatible_versions=1.21.4
++compatible_versions=1.21.11
+ curseforge_project_id_fabric=817666
+ curseforge_project_id_neoforge=817651
+ modrinth_project_id=Z2mXHnxP
+@@ -29,10 +29,10 @@ debug_publish=true
+ yungsapi_version=5.4.0
+ 
+ # Fabric
+-fabric_version=0.112.2
+-fabric_loader_version=0.16.9
+-clothconfig_version_fabric=17.0.144
+-modmenu_version_fabric=13.0.3
++fabric_version=0.141.6
++fabric_loader_version=0.20.1
++clothconfig_version_fabric=21.11.153
++modmenu_version_fabric=17.0.1
+ 
+ # NeoForge
+ neoforge_version=21.4.124
+diff --git a/gradle/wrapper/gradle-wrapper.properties b/gradle/wrapper/gradle-wrapper.properties
+index d6e308a..3ae1e2f 100644
+--- a/gradle/wrapper/gradle-wrapper.properties
++++ b/gradle/wrapper/gradle-wrapper.properties
+@@ -1,5 +1,5 @@
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+-distributionUrl=https\://services.gradle.org/distributions/gradle-8.12-bin.zip
++distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+ zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
+diff --git a/settings.gradle b/settings.gradle
+index a7e9a76..2c99fc3 100644
+--- a/settings.gradle
++++ b/settings.gradle
+@@ -10,7 +10,7 @@ pluginManagement {
+                 }
+             }
+             filter {
+-                includeGroup("net.fabricmc")
++                includeGroupAndSubgroups("net.fabricmc")
+                 includeGroup("fabric-loom")
+             }
+         }
+-- 
+2.53.0.windows.2
+

@@ -1,0 +1,2 @@
+// Local builds only: upstream signs releases with the author's private key, which we do not have.
+allprojects { tasks.configureEach { if (it.class.name.contains('Sign')) it.enabled = false } }

@@ -1,0 +1,337 @@
+From 9a99aeb829f1b19741674a410fb79a041d562bca Mon Sep 17 00:00:00 2001
+From: port <port@example.invalid>
+Date: Wed, 25 Nov 2026 08:37:21 -0500
+Subject: [PATCH] Port YUNGs-Better-Caves to Minecraft 1.21.11 (Fabric)
+
+---
+ .../bettercaves/BetterCavesCommon.java        |  6 ++---
+ .../json/ResourceLocationAdapter.java         | 10 ++++-----
+ .../mixin/aquiferfix/RandomStateMixin.java    |  4 ++--
+ .../worldgen/carver/AbstractCarver.java       |  8 +++----
+ .../worldgen/carver/CarverSettings.java       |  4 ++--
+ .../liquidregion/LiquidRegionsController.java | 12 +++++-----
+ .../BiomeModificationsModuleFabric.java       |  4 ++--
+ .../module/ConfigModuleFabric.java            |  4 ++--
+ build.gradle                                  |  2 +-
+ .../src/main/groovy/multiloader-common.gradle |  1 +
+ gradle.properties                             | 22 +++++++++----------
+ gradle/wrapper/gradle-wrapper.properties      |  2 +-
+ settings.gradle                               |  2 +-
+ 13 files changed, 41 insertions(+), 40 deletions(-)
+
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/BetterCavesCommon.java b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/BetterCavesCommon.java
+index 4f061d8..7ac3360 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/BetterCavesCommon.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/BetterCavesCommon.java
+@@ -2,7 +2,7 @@ package com.yungnickyoung.minecraft.bettercaves;
+ 
+ import com.yungnickyoung.minecraft.bettercaves.module.ConfigModule;
+ import com.yungnickyoung.minecraft.yungsapi.api.YungAutoRegister;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import org.apache.logging.log4j.LogManager;
+ import org.apache.logging.log4j.Logger;
+ 
+@@ -19,7 +19,7 @@ public class BetterCavesCommon {
+         YungAutoRegister.scanPackageForAnnotations("com.yungnickyoung.minecraft.bettercaves.module");
+     }
+ 
+-    public static ResourceLocation id(String path) {
+-        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
++    public static Identifier id(String path) {
++        return Identifier.fromNamespaceAndPath(MOD_ID, path);
+     }
+ }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/json/ResourceLocationAdapter.java b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/json/ResourceLocationAdapter.java
+index e520975..f1a0eca 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/json/ResourceLocationAdapter.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/json/ResourceLocationAdapter.java
+@@ -4,24 +4,24 @@ import com.google.gson.TypeAdapter;
+ import com.google.gson.stream.JsonReader;
+ import com.google.gson.stream.JsonToken;
+ import com.google.gson.stream.JsonWriter;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ 
+ import java.io.IOException;
+ 
+-public class ResourceLocationAdapter extends TypeAdapter<ResourceLocation> {
++public class ResourceLocationAdapter extends TypeAdapter<Identifier> {
+     public ResourceLocationAdapter() {
+     }
+ 
+-    public ResourceLocation read(JsonReader reader) throws IOException {
++    public Identifier read(JsonReader reader) throws IOException {
+         if (reader.peek() == JsonToken.NULL) {
+             reader.nextNull();
+             return null;
+         } else {
+-            return ResourceLocation.parse(reader.nextString());
++            return Identifier.parse(reader.nextString());
+         }
+     }
+ 
+-    public void write(JsonWriter writer, ResourceLocation resourceLocation) throws IOException {
++    public void write(JsonWriter writer, Identifier resourceLocation) throws IOException {
+         if (resourceLocation == null) {
+             writer.nullValue();
+         } else {
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/mixin/aquiferfix/RandomStateMixin.java b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/mixin/aquiferfix/RandomStateMixin.java
+index a0a590b..5762cd7 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/mixin/aquiferfix/RandomStateMixin.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/mixin/aquiferfix/RandomStateMixin.java
+@@ -4,7 +4,7 @@ import com.yungnickyoung.minecraft.bettercaves.duck.ILiquidRegionsProvider;
+ import com.yungnickyoung.minecraft.bettercaves.worldgen.liquidregion.LiquidRegions;
+ import com.yungnickyoung.minecraft.bettercaves.worldgen.liquidregion.LiquidRegionsController;
+ import net.minecraft.core.HolderGetter;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
+ import net.minecraft.world.level.levelgen.PositionalRandomFactory;
+ import net.minecraft.world.level.levelgen.RandomState;
+@@ -34,7 +34,7 @@ public class RandomStateMixin implements ILiquidRegionsProvider {
+                                               final CallbackInfo ci) {
+         var liquidRegionsSettings = LiquidRegionsController.getInstance().getSettings();
+         if (liquidRegionsSettings != null) {
+-            var forkedRandom = this.random.fromHashOf(ResourceLocation.withDefaultNamespace("liquid_regions"));
++            var forkedRandom = this.random.fromHashOf(Identifier.withDefaultNamespace("liquid_regions"));
+             this.liquidRegions = new LiquidRegions(forkedRandom, liquidRegionsSettings);
+         }
+     }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/carver/AbstractCarver.java b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/carver/AbstractCarver.java
+index 89ffe45..aae933b 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/carver/AbstractCarver.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/carver/AbstractCarver.java
+@@ -57,7 +57,7 @@ public abstract class AbstractCarver {
+             // null means that we're either in the buffer zone between liquid regions,
+             // or that there is no liquid region specified for this dimension.
+             if (liquidBlockState != null) {
+-                chunkAccess.setBlockState(blockPos, liquidBlockState, false);
++                chunkAccess.setBlockState(blockPos, liquidBlockState, 0);
+             }
+         } else {
+             BlockState newBlockState = aquifer.computeSubstance(new DensityFunction.SinglePointContext(
+@@ -67,7 +67,7 @@ public abstract class AbstractCarver {
+                 return;
+             }
+ 
+-            chunkAccess.setBlockState(blockPos, newBlockState, false);
++            chunkAccess.setBlockState(blockPos, newBlockState, 0);
+             if (aquifer.shouldScheduleFluidUpdate() && !newBlockState.getFluidState().isEmpty()) {
+                 chunkAccess.markPosForPostprocessing(blockPos);
+             }
+@@ -103,9 +103,9 @@ public abstract class AbstractCarver {
+         if (DEBUG_BLOCKS.contains(chunkIn.getBlockState(blockPos))) return;
+ 
+         if (digBlock) {
+-            chunkIn.setBlockState(blockPos, this.settings.getDebugBlock(), false);
++            chunkIn.setBlockState(blockPos, this.settings.getDebugBlock(), 0);
+         } else {
+-            chunkIn.setBlockState(blockPos, Blocks.AIR.defaultBlockState(), false);
++            chunkIn.setBlockState(blockPos, Blocks.AIR.defaultBlockState(), 0);
+         }
+     }
+ }
+\ No newline at end of file
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/carver/CarverSettings.java b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/carver/CarverSettings.java
+index 6089852..7a602cc 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/carver/CarverSettings.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/carver/CarverSettings.java
+@@ -29,8 +29,8 @@ public class CarverSettings {
+ 
+     public CarverSettings(ServerLevel serverLevel) {
+         this.seed = serverLevel.getSeed();
+-        if (LiquidRegionsController.getInstance().hasSettingsForDimension(serverLevel.dimension().location())) {
+-            this.liquidAltitude = LiquidRegionsController.getInstance().getSettingsForDimension(serverLevel.dimension().location()).liquidAltitude();
++        if (LiquidRegionsController.getInstance().hasSettingsForDimension(serverLevel.dimension().identifier())) {
++            this.liquidAltitude = LiquidRegionsController.getInstance().getSettingsForDimension(serverLevel.dimension().identifier()).liquidAltitude();
+         } else {
+             this.liquidAltitude = LiquidRegions.DEFAULT_ALTITUDE;
+         }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/liquidregion/LiquidRegionsController.java b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/liquidregion/LiquidRegionsController.java
+index 66da02f..f2f9cd1 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/liquidregion/LiquidRegionsController.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/bettercaves/worldgen/liquidregion/LiquidRegionsController.java
+@@ -2,7 +2,7 @@ package com.yungnickyoung.minecraft.bettercaves.worldgen.liquidregion;
+ 
+ import com.google.gson.annotations.SerializedName;
+ import com.yungnickyoung.minecraft.bettercaves.worldgen.context.ScopedValue;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.server.level.ServerLevel;
+ import org.jspecify.annotations.NullMarked;
+ import org.jspecify.annotations.Nullable;
+@@ -28,7 +28,7 @@ public class LiquidRegionsController {
+     // Default settings
+     public static void useDefaultSettings() {
+         LiquidRegionsController controller = new LiquidRegionsController();
+-        controller.settingsByDimensionId.put(ResourceLocation.withDefaultNamespace("overworld"), LiquidRegions.Settings.DEFAULT.copy());
++        controller.settingsByDimensionId.put(Identifier.withDefaultNamespace("overworld"), LiquidRegions.Settings.DEFAULT.copy());
+         INSTANCE = controller;
+     }
+ 
+@@ -37,13 +37,13 @@ public class LiquidRegionsController {
+      * This is deserialized from the liquidregions.json config file.
+      */
+     @SerializedName("liquidRegions")
+-    private final Map<ResourceLocation, LiquidRegions.Settings> settingsByDimensionId = new ConcurrentHashMap<>();
++    private final Map<Identifier, LiquidRegions.Settings> settingsByDimensionId = new ConcurrentHashMap<>();
+ 
+-    public boolean hasSettingsForDimension(ResourceLocation dimensionId) {
++    public boolean hasSettingsForDimension(Identifier dimensionId) {
+         return this.settingsByDimensionId.containsKey(dimensionId);
+     }
+ 
+-    public LiquidRegions.Settings getSettingsForDimension(ResourceLocation dimensionId) {
++    public LiquidRegions.Settings getSettingsForDimension(Identifier dimensionId) {
+         return this.settingsByDimensionId.get(dimensionId);
+     }
+ 
+@@ -65,7 +65,7 @@ public class LiquidRegionsController {
+      * The liquid region settings can be retrieved in the callable with {@link #getSettings()}.
+      */
+     public <R, X extends Throwable> R withSettings(final ServerLevel level, final ScopedValue.CallableOp<R, X> callable) throws X {
+-        var dimensionId = level.dimension().location();
++        var dimensionId = level.dimension().identifier();
+         if (!this.hasSettingsForDimension(dimensionId)) {
+             return callable.call();
+         } else {
+diff --git a/Fabric/src/main/java/com/yungnickyoung/minecraft/bettercaves/module/BiomeModificationsModuleFabric.java b/Fabric/src/main/java/com/yungnickyoung/minecraft/bettercaves/module/BiomeModificationsModuleFabric.java
+index 6dcd8b2..5a3de94 100644
+--- a/Fabric/src/main/java/com/yungnickyoung/minecraft/bettercaves/module/BiomeModificationsModuleFabric.java
++++ b/Fabric/src/main/java/com/yungnickyoung/minecraft/bettercaves/module/BiomeModificationsModuleFabric.java
+@@ -29,11 +29,11 @@ public class BiomeModificationsModuleFabric {
+                 .add(ModificationPhase.ADDITIONS,
+                         biomeSelectionContext -> biomeSelectionContext.hasTag(BiomeTags.IS_OVERWORLD),
+                         modificationContext -> modificationContext.getGenerationSettings()
+-                                .addCarver(GenerationStep.Carving.AIR, BETTER_CAVE_CARVER_KEY));
++                                .addCarver(BETTER_CAVE_CARVER_KEY));
+         BiomeModifications.create(BetterCavesCommon.id("add_surface_cave_carver"))
+                 .add(ModificationPhase.ADDITIONS,
+                         biomeSelectionContext -> biomeSelectionContext.hasTag(BiomeTags.IS_OVERWORLD),
+                         modificationContext -> modificationContext.getGenerationSettings()
+-                                .addCarver(GenerationStep.Carving.AIR, SURFACE_CAVE_CARVER_KEY));
++                                .addCarver(SURFACE_CAVE_CARVER_KEY));
+     }
+ }
+diff --git a/Fabric/src/main/java/com/yungnickyoung/minecraft/bettercaves/module/ConfigModuleFabric.java b/Fabric/src/main/java/com/yungnickyoung/minecraft/bettercaves/module/ConfigModuleFabric.java
+index 0910843..9226b0f 100644
+--- a/Fabric/src/main/java/com/yungnickyoung/minecraft/bettercaves/module/ConfigModuleFabric.java
++++ b/Fabric/src/main/java/com/yungnickyoung/minecraft/bettercaves/module/ConfigModuleFabric.java
+@@ -9,7 +9,7 @@ import com.yungnickyoung.minecraft.yungsapi.io.JSON;
+ import me.shedaniel.autoconfig.ConfigHolder;
+ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+ import net.fabricmc.loader.api.FabricLoader;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.world.InteractionResult;
+ 
+ import java.io.File;
+@@ -132,7 +132,7 @@ public class ConfigModuleFabric {
+ 
+             try {
+                 Gson gson = JSON.newGsonBuilder()
+-                        .registerTypeHierarchyAdapter(ResourceLocation.class, new ResourceLocationAdapter())
++                        .registerTypeHierarchyAdapter(Identifier.class, new ResourceLocationAdapter())
+                         .setPrettyPrinting()
+                         .disableHtmlEscaping()
+                         .create();
+diff --git a/build.gradle b/build.gradle
+index 081b607..eb79b1a 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -1,5 +1,5 @@
+ plugins {
+-    id 'fabric-loom' version '1.10-SNAPSHOT' apply false
++    id 'fabric-loom' version '1.13-SNAPSHOT' apply false
+     id "org.jetbrains.gradle.plugin.idea-ext" version "1.1.7" // required for NeoGradle
+     id 'org.spongepowered.mixin' version '0.7-SNAPSHOT' apply false
+     id 'net.darkhax.curseforgegradle' version "${curseforgegradle_version}" apply false // curseforge publishing
+diff --git a/buildSrc/src/main/groovy/multiloader-common.gradle b/buildSrc/src/main/groovy/multiloader-common.gradle
+index 3c8fbba..7aae8fb 100644
+--- a/buildSrc/src/main/groovy/multiloader-common.gradle
++++ b/buildSrc/src/main/groovy/multiloader-common.gradle
+@@ -16,6 +16,7 @@ java {
+ }
+ 
+ repositories {
++    mavenLocal()
+     mavenCentral()
+     // https://docs.gradle.org/current/userguide/declaring_repositories.html#declaring_content_exclusively_found_in_one_repository
+     exclusiveContent {
+diff --git a/gradle.properties b/gradle.properties
+index 1157f37..dea6b5b 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -11,15 +11,15 @@ mod_description=A complete overhaul of Minecraft's cave generation!
+ mod_credits=Thanks so much to all my patrons!
+ license=LGPLv3
+ maven_group=com.yungnickyoung.minecraft.bettercaves
+-mc_version=1.21.1
+-mc_version_range=[1.21, 1.22)
+-mc_version_range_fabric=>=1.21
+-parchment_minecraft=1.21
+-parchment_version=2024.06.23
++mc_version=1.21.11
++mc_version_range=[1.21.11, 1.22)
++mc_version_range_fabric=>=1.21.11
++parchment_minecraft=1.21.11
++parchment_version=2025.12.20
+ 
+ # CurseForge/Modrinth Publishing
+ curseforgegradle_version=1.1.24
+-compatible_versions=1.21,1.21.1
++compatible_versions=1.21.11
+ curseforge_project_id_forge=340583
+ curseforge_project_id_fabric=408465
+ curseforge_project_id_neoforge=340583
+@@ -27,17 +27,17 @@ modrinth_project_id=yungs-better-caves
+ debug_publish=true
+ 
+ # Common
+-yungsapi_version=5.1.5
++yungsapi_version=5.4.0
+ 
+ # Forge
+ forge_version=52.0.17
+ forge_loader_version_range=[51,)
+ 
+ # Fabric
+-fabric_version=0.102.0
+-fabric_loader_version=0.15.11
+-clothconfig_version_fabric=15.0.140
+-modmenu_version_fabric=11.0.2
++fabric_version=0.141.6
++fabric_loader_version=0.20.1
++clothconfig_version_fabric=21.11.153
++modmenu_version_fabric=17.0.1
+ 
+ # NeoForge
+ neoforge_version=21.1.66
+diff --git a/gradle/wrapper/gradle-wrapper.properties b/gradle/wrapper/gradle-wrapper.properties
+index d6e308a..3ae1e2f 100644
+--- a/gradle/wrapper/gradle-wrapper.properties
++++ b/gradle/wrapper/gradle-wrapper.properties
+@@ -1,5 +1,5 @@
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+-distributionUrl=https\://services.gradle.org/distributions/gradle-8.12-bin.zip
++distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+ zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
+diff --git a/settings.gradle b/settings.gradle
+index f439831..b199621 100644
+--- a/settings.gradle
++++ b/settings.gradle
+@@ -10,7 +10,7 @@ pluginManagement {
+                 }
+             }
+             filter {
+-                includeGroup("net.fabricmc")
++                includeGroupAndSubgroups("net.fabricmc")
+                 includeGroup("fabric-loom")
+             }
+         }
+-- 
+2.53.0.windows.2
+

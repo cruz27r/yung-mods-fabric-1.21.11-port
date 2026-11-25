@@ -1,0 +1,501 @@
+From 7a741c9075974e5744df08229d5939cedc5e7048 Mon Sep 17 00:00:00 2001
+From: port <port@example.invalid>
+Date: Wed, 25 Nov 2026 08:33:41 -0500
+Subject: [PATCH] Port YUNGs-Better-End-Island to Minecraft 1.21.11 (Fabric)
+
+---
+ .../command/EndIslandCommand.java             |  2 +-
+ .../mixin/EndDragonFightMixin.java            |  6 +++---
+ .../mixin/EndergeticExpansionMixins.java      |  3 +--
+ .../mixin/ServerLevelMixin.java               |  5 ++---
+ .../mixin/TheEndGatewayBlockEntityMixin.java  |  4 ++--
+ .../world/SpikeCacheLoader.java               |  2 +-
+ .../feature/BetterEndGatewayFeature.java      |  6 +++---
+ .../world/feature/BetterEndPodiumFeature.java | 12 +++++------
+ .../BetterEndSpawnPlatformFeature.java        |  6 +++---
+ .../world/feature/BetterSpikeFeature.java     | 12 +++++------
+ .../processor/BlockReplaceProcessor.java      | 18 ++++++++---------
+ .../world/processor/DragonEggProcessor.java   |  2 --
+ .../world/processor/ObsidianProcessor.java    |  2 --
+ .../world/util/EndSpikeUtils.java             |  2 +-
+ build.gradle                                  |  2 +-
+ .../src/main/groovy/multiloader-common.gradle |  1 +
+ gradle.properties                             | 20 +++++++++----------
+ gradle/wrapper/gradle-wrapper.properties      |  2 +-
+ settings.gradle                               |  2 +-
+ 19 files changed, 51 insertions(+), 58 deletions(-)
+
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/command/EndIslandCommand.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/command/EndIslandCommand.java
+index 2ca37fb..9a820ed 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/command/EndIslandCommand.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/command/EndIslandCommand.java
+@@ -13,7 +13,7 @@ import net.minecraft.world.level.Level;
+ public class EndIslandCommand {
+     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext ctx, Commands.CommandSelection selection) {
+         dispatcher.register(Commands.literal("end_island")
+-                .requires((source) -> source.hasPermission(2))
++                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                 .then(Commands.literal("reset")
+                         .executes(context -> executeReset(context.getSource(), false))
+                         .then(Commands.argument("forceNewPortalPos", BoolArgumentType.bool())
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/EndDragonFightMixin.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/EndDragonFightMixin.java
+index 140fb6c..e54e328 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/EndDragonFightMixin.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/EndDragonFightMixin.java
+@@ -14,7 +14,7 @@ import com.yungnickyoung.minecraft.betterendisland.world.util.EndSpikeUtils;
+ import com.yungnickyoung.minecraft.betterendisland.world.util.ExitPortalUtils;
+ import com.yungnickyoung.minecraft.betterendisland.world.util.WorldgenUtils;
+ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.server.level.ServerBossEvent;
+ import net.minecraft.server.level.ServerLevel;
+@@ -103,7 +103,7 @@ public abstract class EndDragonFightMixin implements IBetterDragonFight {
+         }
+ 
+         if (!this.dragonEvent.getPlayers().isEmpty()) {
+-            this.level.getChunkSource().addRegionTicket(TicketType.DRAGON, new ChunkPos(0, 0), 9, Unit.INSTANCE);
++            this.level.getChunkSource().addTicketWithRadius(TicketType.DRAGON, new ChunkPos(0, 0), 9);
+             boolean isArenaLoaded = this.isArenaLoaded();
+ 
+             // Initial state scanning.
+@@ -135,7 +135,7 @@ public abstract class EndDragonFightMixin implements IBetterDragonFight {
+                 }
+             }
+         } else {
+-            this.level.getChunkSource().removeRegionTicket(TicketType.DRAGON, new ChunkPos(0, 0), 9, Unit.INSTANCE);
++            this.level.getChunkSource().removeTicketWithRadius(TicketType.DRAGON, new ChunkPos(0, 0), 9);
+         }
+         ci.cancel();
+     }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/EndergeticExpansionMixins.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/EndergeticExpansionMixins.java
+index f9e8a88..ffcfea1 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/EndergeticExpansionMixins.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/EndergeticExpansionMixins.java
+@@ -6,7 +6,6 @@ import net.minecraft.core.RegistryAccess;
+ import net.minecraft.resources.ResourceKey;
+ import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.level.ServerLevel;
+-import net.minecraft.server.level.progress.ChunkProgressListener;
+ import net.minecraft.world.RandomSequences;
+ import net.minecraft.world.level.Level;
+ import net.minecraft.world.level.dimension.DimensionType;
+@@ -43,7 +42,7 @@ public abstract class EndergeticExpansionMixins extends Level {
+      * Mixin to overwrite Endergetic Expansion's EndergeticDragonFightManager with the vanilla one, which we inject into.
+      */
+     @Inject(at = @At("RETURN"), method = "<init>")
+-    private void betterendisland_overwriteModdedDragonFight(MinecraftServer server, Executor $$1, LevelStorageSource.LevelStorageAccess $$2, ServerLevelData $$3, ResourceKey $$4, LevelStem $$5, ChunkProgressListener $$6, boolean $$7, long $$8, List $$9, boolean $$10, RandomSequences $$11, CallbackInfo ci) {
++    private void betterendisland_overwriteModdedDragonFight(MinecraftServer server, Executor $$1, LevelStorageSource.LevelStorageAccess $$2, ServerLevelData $$3, ResourceKey $$4, LevelStem $$5, boolean $$7, long $$8, List $$9, boolean $$10, RandomSequences $$11, CallbackInfo ci) {
+         if (BetterEndIslandCommon.endergetic && this.dragonFight != null) {
+             this.dragonFight = new EndDragonFight((ServerLevel) (Object) this, server.getWorldData().worldGenOptions().seed(), server.getWorldData().endDragonFightData());
+         }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/ServerLevelMixin.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/ServerLevelMixin.java
+index 7e1dedb..3058c02 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/ServerLevelMixin.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/ServerLevelMixin.java
+@@ -9,7 +9,6 @@ import net.minecraft.core.RegistryAccess;
+ import net.minecraft.resources.ResourceKey;
+ import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.level.ServerLevel;
+-import net.minecraft.server.level.progress.ChunkProgressListener;
+ import net.minecraft.world.RandomSequences;
+ import net.minecraft.world.entity.EntitySelector;
+ import net.minecraft.world.entity.player.Player;
+@@ -52,7 +51,7 @@ public abstract class ServerLevelMixin extends Level {
+     private MinecraftServer server;
+ 
+     @Inject(method = "<init>", at = @At("RETURN"))
+-    private void betterendisland_attachExtraData1(MinecraftServer server, Executor $$1, LevelStorageSource.LevelStorageAccess $$2, ServerLevelData $$3, ResourceKey $$4, LevelStem $$5, ChunkProgressListener $$6, boolean $$7, long $$8, List $$9, boolean $$10, RandomSequences $$11, CallbackInfo ci) {
++    private void betterendisland_attachExtraData1(MinecraftServer server, Executor $$1, LevelStorageSource.LevelStorageAccess $$2, ServerLevelData $$3, ResourceKey $$4, LevelStem $$5, boolean $$7, long $$8, List $$9, boolean $$10, RandomSequences $$11, CallbackInfo ci) {
+         if (this.dragonFight != null) {
+             this.dragonFight = new EndDragonFight((ServerLevel) (Object) this,
+                     server.getWorldData().worldGenOptions().seed(),
+@@ -77,7 +76,7 @@ public abstract class ServerLevelMixin extends Level {
+ 
+     @Inject(method = "tick", at = @At("HEAD"))
+     private void betterendisland_tickInitialDragonSummonTrigger(BooleanSupplier booleanSupplier, CallbackInfo ci) {
+-        if (!this.dimension().location().equals(BuiltinDimensionTypes.END.location()) || this.getDragonFight() == null) {
++        if (!this.dimension().identifier().equals(BuiltinDimensionTypes.END.identifier()) || this.getDragonFight() == null) {
+             return;
+         }
+ 
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/TheEndGatewayBlockEntityMixin.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/TheEndGatewayBlockEntityMixin.java
+index 9823787..12c32c6 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/TheEndGatewayBlockEntityMixin.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/mixin/TheEndGatewayBlockEntityMixin.java
+@@ -3,7 +3,7 @@ package com.yungnickyoung.minecraft.betterendisland.mixin;
+ import com.yungnickyoung.minecraft.betterendisland.BetterEndIslandCommon;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.registries.Registries;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.tags.TagKey;
+ import net.minecraft.world.level.BlockGetter;
+ import net.minecraft.world.level.ChunkPos;
+@@ -22,7 +22,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+ public abstract class TheEndGatewayBlockEntityMixin {
+     @Unique
+     private static final TagKey<Block> CANNOT_PLACE_ON = TagKey.create(Registries.BLOCK,
+-            ResourceLocation.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, "end_gateway_cannot_place_player_on"));
++            Identifier.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, "end_gateway_cannot_place_player_on"));
+ 
+     @Inject(method = "findTallestBlock", at = @At("HEAD"), cancellable = true)
+     private static void betterendisland_findTallestBlock(BlockGetter level, BlockPos pos, int radius, boolean placeAnywhere, CallbackInfoReturnable<BlockPos> cir) {
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/SpikeCacheLoader.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/SpikeCacheLoader.java
+index 85dc1d3..cf5c6c6 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/SpikeCacheLoader.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/SpikeCacheLoader.java
+@@ -4,7 +4,7 @@ import com.google.common.cache.CacheLoader;
+ import com.google.common.collect.Lists;
+ import com.yungnickyoung.minecraft.betterendisland.BetterEndIslandCommon;
+ import it.unimi.dsi.fastutil.ints.IntArrayList;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.util.Mth;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.level.levelgen.feature.SpikeFeature;
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndGatewayFeature.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndGatewayFeature.java
+index 5a28b38..e809ad5 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndGatewayFeature.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndGatewayFeature.java
+@@ -5,7 +5,7 @@ import com.yungnickyoung.minecraft.betterendisland.world.IBetterDragonFight;
+ import com.yungnickyoung.minecraft.betterendisland.world.processor.DragonEggProcessor;
+ import com.yungnickyoung.minecraft.betterendisland.world.processor.ObsidianProcessor;
+ import net.minecraft.core.BlockPos;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.level.ServerLevelAccessor;
+@@ -43,7 +43,7 @@ public class BetterEndGatewayFeature {
+             numberTimesDragonKilled = ((IBetterDragonFight) serverLevel.getDragonFight()).getNumTimesDragonKilled();
+         }
+ 
+-        ResourceLocation template = ResourceLocation.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, "gateway");
++        Identifier template = Identifier.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, "gateway");
+         boolean placed = placeTemplate(level, ctx.random(), origin, template, numberTimesDragonKilled);
+ 
+         BlockPos portalPos = new BlockPos(origin);
+@@ -61,7 +61,7 @@ public class BetterEndGatewayFeature {
+         return placed;
+     }
+ 
+-    private static boolean placeTemplate(ServerLevelAccessor level, RandomSource randomSource, BlockPos centerPos, ResourceLocation id, int numberTimesDragonKilled) {
++    private static boolean placeTemplate(ServerLevelAccessor level, RandomSource randomSource, BlockPos centerPos, Identifier id, int numberTimesDragonKilled) {
+         Optional<StructureTemplate> templateOptional = level.getLevel().getStructureManager().get(id);
+         if (templateOptional.isEmpty()) { // Unsuccessful creation. Name is probably invalid.
+             BetterEndIslandCommon.LOGGER.warn("Failed to create invalid feature {}", id);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndPodiumFeature.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndPodiumFeature.java
+index 52fb207..564055e 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndPodiumFeature.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndPodiumFeature.java
+@@ -8,7 +8,7 @@ import com.yungnickyoung.minecraft.betterendisland.world.processor.ObsidianProce
+ import com.yungnickyoung.minecraft.yungsapi.api.world.randomize.BlockStateRandomizer;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
+@@ -71,7 +71,7 @@ public class BetterEndPodiumFeature extends Feature<NoneFeatureConfiguration> {
+         }
+ 
+         // Choose and place template
+-        ResourceLocation template = chooseTemplate();
++        Identifier template = chooseTemplate();
+         boolean placed = placeTemplate(level, randomSource, pos, Rotation.NONE, template, numberTimesDragonKilled);
+ 
+         // Place crystals on initial spawn
+@@ -89,16 +89,16 @@ public class BetterEndPodiumFeature extends Feature<NoneFeatureConfiguration> {
+         return placed;
+     }
+ 
+-    private ResourceLocation chooseTemplate() {
++    private Identifier chooseTemplate() {
+         if (this.isBottomOnly) {
+-            return ResourceLocation.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, "tower_bottom_open");
++            return Identifier.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, "tower_bottom_open");
+         }
+         String towerType = this.isInitialSpawn ? "initial" : "broken";
+         String towerName = "tower_" + towerType;
+-        return ResourceLocation.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, towerName);
++        return Identifier.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, towerName);
+     }
+ 
+-    private boolean placeTemplate(ServerLevelAccessor level, RandomSource randomSource, BlockPos centerPos, Rotation rotation, ResourceLocation id, int numberTimesDragonKilled) {
++    private boolean placeTemplate(ServerLevelAccessor level, RandomSource randomSource, BlockPos centerPos, Rotation rotation, Identifier id, int numberTimesDragonKilled) {
+         Optional<StructureTemplate> templateOptional = level.getLevel().getStructureManager().get(id);
+         if (templateOptional.isEmpty()) { // Unsuccessful creation. Name is probably invalid.
+             BetterEndIslandCommon.LOGGER.warn("Failed to create invalid feature {}", id);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndSpawnPlatformFeature.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndSpawnPlatformFeature.java
+index c9eef37..866a661 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndSpawnPlatformFeature.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterEndSpawnPlatformFeature.java
+@@ -5,7 +5,7 @@ import com.yungnickyoung.minecraft.betterendisland.mixin.EndPlatformFeatureMixin
+ import com.yungnickyoung.minecraft.betterendisland.world.IBetterDragonFight;
+ import com.yungnickyoung.minecraft.betterendisland.world.processor.ObsidianProcessor;
+ import net.minecraft.core.BlockPos;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.level.ServerLevelAccessor;
+@@ -31,12 +31,12 @@ public class BetterEndSpawnPlatformFeature {
+         if (level instanceof ServerLevel serverLevel && serverLevel.getDragonFight() != null) {
+             numberTimesDragonKilled = ((IBetterDragonFight) serverLevel.getDragonFight()).getNumTimesDragonKilled();
+         }
+-        ResourceLocation template = ResourceLocation.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, "spawn_platform");
++        Identifier template = Identifier.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, "spawn_platform");
+         return placeTemplate(level, RandomSource.create(), origin, template, numberTimesDragonKilled, dropDestroyedBlocks);
+     }
+ 
+     private static boolean placeTemplate(ServerLevelAccessor level, RandomSource randomSource, BlockPos centerPos,
+-                                         ResourceLocation id, int numberTimesDragonKilled, boolean destroyBlocks) {
++                                         Identifier id, int numberTimesDragonKilled, boolean destroyBlocks) {
+         Optional<StructureTemplate> templateOptional = level.getLevel().getStructureManager().get(id);
+         if (templateOptional.isEmpty()) { // Unsuccessful creation. Name is probably invalid.
+             BetterEndIslandCommon.LOGGER.warn("Failed to create invalid feature {}", id);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterSpikeFeature.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterSpikeFeature.java
+index 554baee..d6a0fd9 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterSpikeFeature.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/feature/BetterSpikeFeature.java
+@@ -12,7 +12,7 @@ import com.yungnickyoung.minecraft.betterendisland.world.processor.DragonEggProc
+ import com.yungnickyoung.minecraft.betterendisland.world.processor.ObsidianProcessor;
+ import com.yungnickyoung.minecraft.yungsapi.api.world.randomize.BlockStateRandomizer;
+ import net.minecraft.core.BlockPos;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.entity.EntitySpawnReason;
+@@ -72,7 +72,7 @@ public class BetterSpikeFeature {
+     public static void placeSpike(ServerLevelAccessor level, RandomSource randomSource, SpikeConfiguration config, SpikeFeature.EndSpike spike, boolean isInitialSpawn) {
+         // Choose templates based on spike and config.
+         // First template ID is the top part, second is the bottom part.
+-        Pair<ResourceLocation, ResourceLocation> templates = chooseTemplates(spike, isInitialSpawn, randomSource.nextFloat() < 0.2f);
++        Pair<Identifier, Identifier> templates = chooseTemplates(spike, isInitialSpawn, randomSource.nextFloat() < 0.2f);
+ 
+         // Use different random to ensure rotation for a given spike is same every fight
+         long seed = 0;
+@@ -107,14 +107,14 @@ public class BetterSpikeFeature {
+                 endCrystal.setBeamTarget(config.getCrystalBeamTarget());
+                 endCrystal.setInvulnerable(config.isCrystalInvulnerable());
+                 int crystalY = topY + ((IEndSpike) spike).getCrystalYOffset();
+-                endCrystal.moveTo((double) spike.getCenterX() + 0.5D, crystalY, (double) spike.getCenterZ() + 0.5D, randomSource.nextFloat() * 360.0F, 0.0F);
++                endCrystal.snapTo((double) spike.getCenterX() + 0.5D, crystalY, (double) spike.getCenterZ() + 0.5D, randomSource.nextFloat() * 360.0F, 0.0F);
+                 level.addFreshEntity(endCrystal);
+                 level.setBlock(new BlockPos(spike.getCenterX(), crystalY - 1, spike.getCenterZ()), Blocks.BEDROCK.defaultBlockState(), Block.UPDATE_ALL);
+             }
+         }
+     }
+ 
+-    private static Pair<ResourceLocation, ResourceLocation> chooseTemplates(SpikeFeature.EndSpike spike, boolean isInitialSpawn, boolean isGuarded) {
++    private static Pair<Identifier, Identifier> chooseTemplates(SpikeFeature.EndSpike spike, boolean isInitialSpawn, boolean isGuarded) {
+         String pillarType = isInitialSpawn ? "initial" : (isGuarded ? "guarded" : "broken");
+         int pillarHeight = (spike.getHeight() - 73) / 3;
+         if (pillarHeight == 10) pillarHeight = 9; // We don't have a 10th variant
+@@ -125,10 +125,10 @@ public class BetterSpikeFeature {
+         // This doesn't really belong here, but it's the easiest way to do it.
+         ((IEndSpike) spike).setCrystalYOffsetFromPillarHeight(pillarHeight);
+ 
+-        return new Pair<>(ResourceLocation.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, topName), ResourceLocation.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, bottomName));
++        return new Pair<>(Identifier.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, topName), Identifier.fromNamespaceAndPath(BetterEndIslandCommon.MOD_ID, bottomName));
+     }
+ 
+-    private static boolean placeTemplate(ServerLevelAccessor level, RandomSource randomSource, BlockPos centerPos, Rotation rotation, ResourceLocation id, int numberTimesDragonKilled) {
++    private static boolean placeTemplate(ServerLevelAccessor level, RandomSource randomSource, BlockPos centerPos, Rotation rotation, Identifier id, int numberTimesDragonKilled) {
+         Optional<StructureTemplate> templateOptional = level.getLevel().getStructureManager().get(id);
+         if (templateOptional.isEmpty()) { // Unsuccessful creation. Name is probably invalid.
+             BetterEndIslandCommon.LOGGER.warn("Failed to create invalid feature {}", id);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/BlockReplaceProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/BlockReplaceProcessor.java
+index 7a899d4..29ddd84 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/BlockReplaceProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/BlockReplaceProcessor.java
+@@ -5,7 +5,6 @@ import com.mojang.serialization.MapCodec;
+ import com.mojang.serialization.codecs.RecordCodecBuilder;
+ import com.yungnickyoung.minecraft.betterendisland.module.StructureProcessorTypeModule;
+ import com.yungnickyoung.minecraft.yungsapi.api.world.randomize.BlockStateRandomizer;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+ import net.minecraft.server.level.WorldGenRegion;
+@@ -30,7 +29,6 @@ import net.minecraft.world.level.material.Fluids;
+ import javax.annotation.ParametersAreNonnullByDefault;
+ 
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class BlockReplaceProcessor extends StructureProcessor {
+     public static final MapCodec<BlockReplaceProcessor> CODEC = RecordCodecBuilder.mapCodec(instance -> instance
+             .group(
+@@ -87,17 +85,17 @@ public class BlockReplaceProcessor extends StructureProcessor {
+                 if (blockInfoGlobal.state().hasProperty(SlabBlock.TYPE) && outputState.hasProperty(SlabBlock.TYPE)) {
+                     outputState = outputState.setValue(SlabBlock.TYPE, blockInfoGlobal.state().getValue(SlabBlock.TYPE));
+                 }
+-                if (blockInfoGlobal.state().hasProperty(WallBlock.NORTH_WALL) && outputState.hasProperty(WallBlock.NORTH_WALL)) {
+-                    outputState = outputState.setValue(WallBlock.NORTH_WALL, blockInfoGlobal.state().getValue(WallBlock.NORTH_WALL));
++                if (blockInfoGlobal.state().hasProperty(WallBlock.NORTH) && outputState.hasProperty(WallBlock.NORTH)) {
++                    outputState = outputState.setValue(WallBlock.NORTH, blockInfoGlobal.state().getValue(WallBlock.NORTH));
+                 }
+-                if (blockInfoGlobal.state().hasProperty(WallBlock.EAST_WALL) && outputState.hasProperty(WallBlock.EAST_WALL)) {
+-                    outputState = outputState.setValue(WallBlock.EAST_WALL, blockInfoGlobal.state().getValue(WallBlock.EAST_WALL));
++                if (blockInfoGlobal.state().hasProperty(WallBlock.EAST) && outputState.hasProperty(WallBlock.EAST)) {
++                    outputState = outputState.setValue(WallBlock.EAST, blockInfoGlobal.state().getValue(WallBlock.EAST));
+                 }
+-                if (blockInfoGlobal.state().hasProperty(WallBlock.SOUTH_WALL) && outputState.hasProperty(WallBlock.SOUTH_WALL)) {
+-                    outputState = outputState.setValue(WallBlock.SOUTH_WALL, blockInfoGlobal.state().getValue(WallBlock.SOUTH_WALL));
++                if (blockInfoGlobal.state().hasProperty(WallBlock.SOUTH) && outputState.hasProperty(WallBlock.SOUTH)) {
++                    outputState = outputState.setValue(WallBlock.SOUTH, blockInfoGlobal.state().getValue(WallBlock.SOUTH));
+                 }
+-                if (blockInfoGlobal.state().hasProperty(WallBlock.WEST_WALL) && outputState.hasProperty(WallBlock.WEST_WALL)) {
+-                    outputState = outputState.setValue(WallBlock.WEST_WALL, blockInfoGlobal.state().getValue(WallBlock.WEST_WALL));
++                if (blockInfoGlobal.state().hasProperty(WallBlock.WEST) && outputState.hasProperty(WallBlock.WEST)) {
++                    outputState = outputState.setValue(WallBlock.WEST, blockInfoGlobal.state().getValue(WallBlock.WEST));
+                 }
+                 if (blockInfoGlobal.state().hasProperty(WallBlock.UP) && outputState.hasProperty(WallBlock.UP)) {
+                     outputState = outputState.setValue(WallBlock.UP, blockInfoGlobal.state().getValue(WallBlock.UP));
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/DragonEggProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/DragonEggProcessor.java
+index 78cc9a1..b806cd5 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/DragonEggProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/DragonEggProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betterendisland.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betterendisland.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.world.level.LevelReader;
+ import net.minecraft.world.level.block.Blocks;
+@@ -17,7 +16,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * Avoids overwriting the dragon egg.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class DragonEggProcessor extends StructureProcessor {
+     public static final DragonEggProcessor INSTANCE = new DragonEggProcessor();
+     public static final MapCodec<DragonEggProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/ObsidianProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/ObsidianProcessor.java
+index ecfd78f..cac9d76 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/ObsidianProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/processor/ObsidianProcessor.java
+@@ -3,7 +3,6 @@ package com.yungnickyoung.minecraft.betterendisland.world.processor;
+ import com.mojang.serialization.MapCodec;
+ import com.mojang.serialization.codecs.RecordCodecBuilder;
+ import com.yungnickyoung.minecraft.betterendisland.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.util.ExtraCodecs;
+ import net.minecraft.util.Mth;
+@@ -22,7 +21,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * Replaces obsidian with crying obsidian based on number of times dragon has been killed.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class ObsidianProcessor extends StructureProcessor {
+     public static final MapCodec<ObsidianProcessor> CODEC = RecordCodecBuilder.mapCodec(instance -> instance
+             .group(
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/util/EndSpikeUtils.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/util/EndSpikeUtils.java
+index deb52c2..50fa0ff 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/util/EndSpikeUtils.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterendisland/world/util/EndSpikeUtils.java
+@@ -4,7 +4,7 @@ import com.google.common.collect.ImmutableList;
+ import com.yungnickyoung.minecraft.betterendisland.BetterEndIslandCommon;
+ import com.yungnickyoung.minecraft.betterendisland.world.feature.BetterSpikeFeature;
+ import it.unimi.dsi.fastutil.ints.IntArrayList;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.util.Mth;
+diff --git a/build.gradle b/build.gradle
+index 081b607..eb79b1a 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -1,5 +1,5 @@
+ plugins {
+-    id 'fabric-loom' version '1.10-SNAPSHOT' apply false
++    id 'fabric-loom' version '1.13-SNAPSHOT' apply false
+     id "org.jetbrains.gradle.plugin.idea-ext" version "1.1.7" // required for NeoGradle
+     id 'org.spongepowered.mixin' version '0.7-SNAPSHOT' apply false
+     id 'net.darkhax.curseforgegradle' version "${curseforgegradle_version}" apply false // curseforge publishing
+diff --git a/buildSrc/src/main/groovy/multiloader-common.gradle b/buildSrc/src/main/groovy/multiloader-common.gradle
+index 375b6e0..0826e06 100644
+--- a/buildSrc/src/main/groovy/multiloader-common.gradle
++++ b/buildSrc/src/main/groovy/multiloader-common.gradle
+@@ -16,6 +16,7 @@ java {
+ }
+ 
+ repositories {
++    mavenLocal()
+     mavenCentral()
+     // https://docs.gradle.org/current/userguide/declaring_repositories.html#declaring_content_exclusively_found_in_one_repository
+     exclusiveContent {
+diff --git a/gradle.properties b/gradle.properties
+index 468a5da..d567ecb 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -11,15 +11,15 @@ mod_description=A complete redesign of the End island, making the Ender Dragon f
+ mod_credits=Thanks so much to all my patrons!
+ license=LGPLv3
+ maven_group=com.yungnickyoung.minecraft.betterendisland
+-mc_version=1.21.4
+-mc_version_range=[1.21.4, 1.22)
+-mc_version_range_fabric=>=1.21.4
+-parchment_minecraft=1.21.4
+-parchment_version=2024.12.22
++mc_version=1.21.11
++mc_version_range=[1.21.11, 1.22)
++mc_version_range_fabric=>=1.21.11
++parchment_minecraft=1.21.11
++parchment_version=2025.12.20
+ 
+ # CurseForge/Modrinth Publishing
+ curseforgegradle_version=1.1.15
+-compatible_versions=1.21.4
++compatible_versions=1.21.11
+ curseforge_project_id_fabric=901350
+ curseforge_project_id_neoforge=901344
+ modrinth_project_id=2BwBOmBQ
+@@ -29,10 +29,10 @@ debug_publish=true
+ yungsapi_version=5.4.0
+ 
+ # Fabric
+-fabric_version=0.112.2
+-fabric_loader_version=0.16.9
+-clothconfig_version_fabric=17.0.144
+-modmenu_version_fabric=13.0.3
++fabric_version=0.141.6
++fabric_loader_version=0.20.1
++clothconfig_version_fabric=21.11.153
++modmenu_version_fabric=17.0.1
+ 
+ # NeoForge
+ neoforge_version=21.4.124
+diff --git a/gradle/wrapper/gradle-wrapper.properties b/gradle/wrapper/gradle-wrapper.properties
+index d6e308a..3ae1e2f 100644
+--- a/gradle/wrapper/gradle-wrapper.properties
++++ b/gradle/wrapper/gradle-wrapper.properties
+@@ -1,5 +1,5 @@
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+-distributionUrl=https\://services.gradle.org/distributions/gradle-8.12-bin.zip
++distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+ zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
+diff --git a/settings.gradle b/settings.gradle
+index 1db0c3a..6d6ca45 100644
+--- a/settings.gradle
++++ b/settings.gradle
+@@ -10,7 +10,7 @@ pluginManagement {
+                 }
+             }
+             filter {
+-                includeGroup("net.fabricmc")
++                includeGroupAndSubgroups("net.fabricmc")
+                 includeGroup("fabric-loom")
+             }
+         }
+-- 
+2.53.0.windows.2
+

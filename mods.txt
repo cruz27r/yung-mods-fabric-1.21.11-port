@@ -1,0 +1,17 @@
+# name|github repo|upstream commit the patch applies to (pinned so patches keep applying)
+# Branches: all 1.21.4, except YUNGs-Better-Caves which uses 1.21.1 (it has no 1.21.4 branch).
+# YUNGs-API first: the other mods build against it.
+YUNGs-API|YUNG-GANG/YUNGs-API|86980283fa596f516946a2d7ff1c0fff920cc7b8
+YUNGs-Menu-Tweaks|YUNG-GANG/YUNGs-Menu-Tweaks|7b6b4e5f83b4426a8e2a3bf48131e78867b436a3
+YUNGs-Extras|YUNG-GANG/YUNGs-Extras|38c07d3865c42394fe83c8e9396c64807736bc25
+YUNGs-Bridges|YUNG-GANG/YUNGs-Bridges|70ec4a9a45d4999f5e818d95f72bc2f1408fcbe6
+YUNGs-Better-Dungeons|YUNG-GANG/YUNGs-Better-Dungeons|8dc2e944309fae36623c67c16f0435c3cae556f3
+YUNGs-Better-Mineshafts|YUNG-GANG/YUNGs-Better-Mineshafts|89664a27b01c8886364c46892a04d57a07099b9e
+YUNGs-Better-Strongholds|YUNG-GANG/YUNGs-Better-Strongholds|cf8db586e20e5b79c4f1c571e8284dd68e76ea80
+YUNGs-Better-Fortresses|YUNG-GANG/YUNGs-Better-Fortresses|161ed3ff084ca13ec08ceea58d4334b46c67545f
+YUNGs-Better-Witch-Huts|YUNG-GANG/YUNGs-Better-Witch-Huts|9496ba546924345a80e77804ca9aa05ced0a60d4
+YUNGs-Better-Jungle-Temples|YUNG-GANG/YUNGs-Better-Jungle-Temples|79edc4e44b576e9e4743bba1bafc2d1384050dad
+YUNGs-Better-Ocean-Monuments|YUNG-GANG/YUNGs-Better-Ocean-Monuments|060501b6a720d8ab61c97662b676e05e85a5ff51
+YUNGs-Better-Desert-Temples|YUNG-GANG/YUNGs-Better-Desert-Temples|3719d2a8970c9bf204b4919460d5e143d5687541
+YUNGs-Better-End-Island|YUNG-GANG/YUNGs-Better-End-Island|fe14a13b3f510a564308e9b60003a6f83034f695
+YUNGs-Better-Caves|YUNG-GANG/YUNGs-Better-Caves|8f1d33f3645e4c1fd6ef1c6be5665a5f5cc65ea0

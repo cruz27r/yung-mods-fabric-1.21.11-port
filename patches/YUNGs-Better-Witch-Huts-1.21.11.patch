@@ -1,0 +1,192 @@
+From 35207f26e2d0e452ff386a6ab9aa1d5b433ea814 Mon Sep 17 00:00:00 2001
+From: port <port@example.invalid>
+Date: Wed, 25 Nov 2026 08:28:01 -0500
+Subject: [PATCH] Port YUNGs-Better-Witch-Huts to Minecraft 1.21.11 (Fabric)
+
+---
+ .../LocateVanillaWitchHutCommandMixin.java    |  4 ++--
+ .../processor/BrewingStandProcessor.java      |  4 ++--
+ .../world/processor/FenceLegProcessor.java    |  2 +-
+ .../world/processor/LegProcessor.java         |  2 +-
+ .../world/processor/WitchCircleProcessor.java |  2 +-
+ build.gradle                                  |  2 +-
+ .../src/main/groovy/multiloader-common.gradle |  1 +
+ gradle.properties                             | 20 +++++++++----------
+ gradle/wrapper/gradle-wrapper.properties      |  2 +-
+ settings.gradle                               |  2 +-
+ 10 files changed, 21 insertions(+), 20 deletions(-)
+
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/mixin/LocateVanillaWitchHutCommandMixin.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/mixin/LocateVanillaWitchHutCommandMixin.java
+index 38d4d95..08f8b98 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/mixin/LocateVanillaWitchHutCommandMixin.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/mixin/LocateVanillaWitchHutCommandMixin.java
+@@ -7,7 +7,7 @@ import net.minecraft.commands.CommandSourceStack;
+ import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
+ import net.minecraft.network.chat.Component;
+ import net.minecraft.resources.ResourceKey;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.server.commands.LocateCommand;
+ import net.minecraft.world.level.levelgen.structure.Structure;
+ import org.spongepowered.asm.mixin.Mixin;
+@@ -32,7 +32,7 @@ public class LocateVanillaWitchHutCommandMixin {
+                                                      ResourceOrTagKeyArgument.Result<Structure> result,
+                                                      CallbackInfoReturnable<Integer> ci) throws CommandSyntaxException {
+         Optional<ResourceKey<Structure>> optional = result.unwrap().left();
+-        if (BetterWitchHutsCommon.CONFIG.general.disableVanillaWitchHuts && optional.isPresent() && optional.get().location().equals(ResourceLocation.withDefaultNamespace("swamp_hut"))) {
++        if (BetterWitchHutsCommon.CONFIG.general.disableVanillaWitchHuts && optional.isPresent() && optional.get().identifier().equals(Identifier.withDefaultNamespace("swamp_hut"))) {
+             throw OLD_HUT_EXCEPTION.create();
+         }
+     }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/BrewingStandProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/BrewingStandProcessor.java
+index fa93c34..2a16c73 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/BrewingStandProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/BrewingStandProcessor.java
+@@ -2,7 +2,7 @@ package com.yungnickyoung.minecraft.betterwitchhuts.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betterwitchhuts.module.StructureProcessorTypeModule;
+-import net.minecraft.Util;
++import net.minecraft.util.Util;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.nbt.CompoundTag;
+ import net.minecraft.nbt.ListTag;
+@@ -31,7 +31,7 @@ public class BrewingStandProcessor extends StructureProcessor {
+         if (blockInfoGlobal.state().getBlock() == Blocks.BREWING_STAND) {
+             RandomSource randomSource = structurePlacementData.getRandom(blockInfoGlobal.pos());
+             CompoundTag tag = blockInfoGlobal.nbt();
+-            ListTag itemsListTag = tag.getList("Items", 10);
++            ListTag itemsListTag = tag.getListOrEmpty("Items");
+             populateItemsList(itemsListTag, randomSource);
+             blockInfoGlobal = new StructureTemplate.StructureBlockInfo(blockInfoGlobal.pos(), blockInfoGlobal.state(), tag);
+         }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/FenceLegProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/FenceLegProcessor.java
+index 1f6eabb..46e18a1 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/FenceLegProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/FenceLegProcessor.java
+@@ -40,7 +40,7 @@ public class FenceLegProcessor extends StructureProcessor {
+             while (mutable.getY() > levelReader.getMinY()
+                     && mutable.getY() < levelReader.getMaxY()
+                     && (currBlockState.isAir() || !levelReader.getFluidState(mutable).isEmpty())) {
+-                levelReader.getChunk(mutable).setBlockState(mutable, Blocks.OAK_FENCE.withPropertiesOf(blockInfoGlobal.state()), false);
++                levelReader.getChunk(mutable).setBlockState(mutable, Blocks.OAK_FENCE.withPropertiesOf(blockInfoGlobal.state()), 0);
+                 mutable.move(Direction.DOWN);
+                 currBlockState = levelReader.getBlockState(mutable);
+             }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/LegProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/LegProcessor.java
+index 96c3208..7836156 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/LegProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/LegProcessor.java
+@@ -41,7 +41,7 @@ public class LegProcessor extends StructureProcessor {
+             while (mutable.getY() > levelReader.getMinY()
+                     && mutable.getY() < levelReader.getMaxY()
+                     && (currBlockState.isAir() || !levelReader.getFluidState(mutable).isEmpty())) {
+-                levelReader.getChunk(mutable).setBlockState(mutable, Blocks.OAK_LOG.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Y), false);
++                levelReader.getChunk(mutable).setBlockState(mutable, Blocks.OAK_LOG.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Y), 0);
+                 mutable.move(Direction.DOWN);
+                 currBlockState = levelReader.getBlockState(mutable);
+             }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/WitchCircleProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/WitchCircleProcessor.java
+index f7cc87f..b937d69 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/WitchCircleProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betterwitchhuts/world/processor/WitchCircleProcessor.java
+@@ -61,7 +61,7 @@ public class WitchCircleProcessor extends StructureProcessor {
+             while (mutable.getY() > levelReader.getMinY()
+                     && mutable.getY() < levelReader.getMaxY()
+                     && (currBlockState.isAir() || !levelReader.getFluidState(mutable).isEmpty())) {
+-                levelReader.getChunk(mutable).setBlockState(mutable, BRICKS_RANDOMIZER.get(randomSource), false);
++                levelReader.getChunk(mutable).setBlockState(mutable, BRICKS_RANDOMIZER.get(randomSource), 0);
+                 mutable.move(Direction.DOWN);
+                 currBlockState = levelReader.getBlockState(mutable);
+             }
+diff --git a/build.gradle b/build.gradle
+index 081b607..eb79b1a 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -1,5 +1,5 @@
+ plugins {
+-    id 'fabric-loom' version '1.10-SNAPSHOT' apply false
++    id 'fabric-loom' version '1.13-SNAPSHOT' apply false
+     id "org.jetbrains.gradle.plugin.idea-ext" version "1.1.7" // required for NeoGradle
+     id 'org.spongepowered.mixin' version '0.7-SNAPSHOT' apply false
+     id 'net.darkhax.curseforgegradle' version "${curseforgegradle_version}" apply false // curseforge publishing
+diff --git a/buildSrc/src/main/groovy/multiloader-common.gradle b/buildSrc/src/main/groovy/multiloader-common.gradle
+index 5f9f940..e245134 100644
+--- a/buildSrc/src/main/groovy/multiloader-common.gradle
++++ b/buildSrc/src/main/groovy/multiloader-common.gradle
+@@ -16,6 +16,7 @@ java {
+ }
+ 
+ repositories {
++    mavenLocal()
+     mavenCentral()
+     // https://docs.gradle.org/current/userguide/declaring_repositories.html#declaring_content_exclusively_found_in_one_repository
+     exclusiveContent {
+diff --git a/gradle.properties b/gradle.properties
+index 7c67d20..e2fce57 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -11,15 +11,15 @@ mod_description=Adds new and improved witch huts to swamps!
+ mod_credits=Thanks so much to all my patrons!
+ license=LGPLv3
+ maven_group=com.yungnickyoung.minecraft.betterwitchhuts
+-mc_version=1.21.4
+-mc_version_range=[1.21.4, 1.22)
+-mc_version_range_fabric=>=1.21.4
+-parchment_minecraft=1.21.4
+-parchment_version=2024.12.22
++mc_version=1.21.11
++mc_version_range=[1.21.11, 1.22)
++mc_version_range_fabric=>=1.21.11
++parchment_minecraft=1.21.11
++parchment_version=2025.12.20
+ 
+ # CurseForge/Modrinth Publishing
+ curseforgegradle_version=1.1.15
+-compatible_versions=1.21.4
++compatible_versions=1.21.11
+ curseforge_project_id_fabric=631403
+ curseforge_project_id_neoforge=631401
+ modrinth_project_id=t5FRdP87
+@@ -29,10 +29,10 @@ debug_publish=true
+ yungsapi_version=5.4.0
+ 
+ # Fabric
+-fabric_version=0.112.2
+-fabric_loader_version=0.16.9
+-clothconfig_version_fabric=17.0.144
+-modmenu_version_fabric=13.0.3
++fabric_version=0.141.6
++fabric_loader_version=0.20.1
++clothconfig_version_fabric=21.11.153
++modmenu_version_fabric=17.0.1
+ 
+ # NeoForge
+ neoforge_version=21.4.124
+diff --git a/gradle/wrapper/gradle-wrapper.properties b/gradle/wrapper/gradle-wrapper.properties
+index d6e308a..3ae1e2f 100644
+--- a/gradle/wrapper/gradle-wrapper.properties
++++ b/gradle/wrapper/gradle-wrapper.properties
+@@ -1,5 +1,5 @@
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+-distributionUrl=https\://services.gradle.org/distributions/gradle-8.12-bin.zip
++distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+ zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
+diff --git a/settings.gradle b/settings.gradle
+index 6eee38b..15305e5 100644
+--- a/settings.gradle
++++ b/settings.gradle
+@@ -10,7 +10,7 @@ pluginManagement {
+                 }
+             }
+             filter {
+-                includeGroup("net.fabricmc")
++                includeGroupAndSubgroups("net.fabricmc")
+                 includeGroup("fabric-loom")
+             }
+         }
+-- 
+2.53.0.windows.2
+

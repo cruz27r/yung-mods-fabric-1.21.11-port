@@ -1,0 +1,383 @@
+From 2f9bc2639d240ca059a42d691e4a09a451853796 Mon Sep 17 00:00:00 2001
+From: port <port@example.invalid>
+Date: Wed, 25 Nov 2026 08:30:56 -0500
+Subject: [PATCH] Port YUNGs-Better-Ocean-Monuments to Minecraft 1.21.11
+ (Fabric)
+
+---
+ .../LocateVanillaMonumentCommandMixin.java    |  4 ++--
+ .../mixin/PersistentTridentMixin.java         |  4 ++--
+ .../module/TagModule.java                     |  4 ++--
+ .../world/processor/AirProcessor.java         |  2 --
+ .../world/processor/LegProcessor.java         |  4 +---
+ ...DarkPrismarineSlabDecorationProcessor.java |  2 --
+ .../processor/RandomOxidizationProcessor.java |  2 --
+ ...ndomPrismarineSlabDecorationProcessor.java |  2 --
+ .../processor/RandomSpongeProcessor.java      |  2 --
+ .../world/processor/SandGravelProcessor.java  |  2 --
+ .../world/processor/SeagrassProcessor.java    |  2 --
+ .../processor/StructureVoidProcessor.java     |  2 --
+ .../world/processor/WaterlogProcessor.java    |  2 --
+ build.gradle                                  |  2 +-
+ .../src/main/groovy/multiloader-common.gradle |  1 +
+ gradle.properties                             | 20 +++++++++----------
+ gradle/wrapper/gradle-wrapper.properties      |  2 +-
+ settings.gradle                               |  2 +-
+ 18 files changed, 21 insertions(+), 40 deletions(-)
+
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/mixin/LocateVanillaMonumentCommandMixin.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/mixin/LocateVanillaMonumentCommandMixin.java
+index 447f6ad..e35ce1f 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/mixin/LocateVanillaMonumentCommandMixin.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/mixin/LocateVanillaMonumentCommandMixin.java
+@@ -7,7 +7,7 @@ import net.minecraft.commands.CommandSourceStack;
+ import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
+ import net.minecraft.network.chat.Component;
+ import net.minecraft.resources.ResourceKey;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.server.commands.LocateCommand;
+ import net.minecraft.world.level.levelgen.structure.Structure;
+ import org.spongepowered.asm.mixin.Mixin;
+@@ -32,7 +32,7 @@ public class LocateVanillaMonumentCommandMixin {
+                                                       ResourceOrTagKeyArgument.Result<Structure> result,
+                                                       CallbackInfoReturnable<Integer> ci) throws CommandSyntaxException {
+         Optional<ResourceKey<Structure>> optional = result.unwrap().left();
+-        if (BetterOceanMonumentsCommon.CONFIG.general.disableVanillaMonuments && optional.isPresent() && optional.get().location().equals(ResourceLocation.withDefaultNamespace("monument"))) {
++        if (BetterOceanMonumentsCommon.CONFIG.general.disableVanillaMonuments && optional.isPresent() && optional.get().identifier().equals(Identifier.withDefaultNamespace("monument"))) {
+             throw OLD_MONUMENT_EXCEPTION.create();
+         }
+     }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/mixin/PersistentTridentMixin.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/mixin/PersistentTridentMixin.java
+index 31ed6d2..ff3f238 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/mixin/PersistentTridentMixin.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/mixin/PersistentTridentMixin.java
+@@ -5,9 +5,9 @@ import com.yungnickyoung.minecraft.betteroceanmonuments.module.TagModule;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.world.entity.Entity;
+ import net.minecraft.world.entity.EntityType;
+-import net.minecraft.world.entity.projectile.AbstractArrow;
++import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+ import net.minecraft.world.entity.projectile.Projectile;
+-import net.minecraft.world.entity.projectile.ThrownTrident;
++import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
+ import net.minecraft.world.level.Level;
+ import net.minecraft.world.level.levelgen.structure.StructureStart;
+ import org.spongepowered.asm.mixin.Mixin;
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/module/TagModule.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/module/TagModule.java
+index 092f4a6..15d57c2 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/module/TagModule.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/module/TagModule.java
+@@ -2,11 +2,11 @@ package com.yungnickyoung.minecraft.betteroceanmonuments.module;
+ 
+ import com.yungnickyoung.minecraft.betteroceanmonuments.BetterOceanMonumentsCommon;
+ import net.minecraft.core.registries.Registries;
+-import net.minecraft.resources.ResourceLocation;
++import net.minecraft.resources.Identifier;
+ import net.minecraft.tags.TagKey;
+ import net.minecraft.world.level.levelgen.structure.Structure;
+ 
+ public class TagModule {
+     public static final TagKey<Structure> BETTER_OCEAN_MONUMENT = TagKey.create(Registries.STRUCTURE,
+-            ResourceLocation.fromNamespaceAndPath(BetterOceanMonumentsCommon.MOD_ID, "better_ocean_monuments"));
++            Identifier.fromNamespaceAndPath(BetterOceanMonumentsCommon.MOD_ID, "better_ocean_monuments"));
+ }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/AirProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/AirProcessor.java
+index 52391dd..26c167b 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/AirProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/AirProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betteroceanmonuments.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betteroceanmonuments.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.world.level.LevelReader;
+ import net.minecraft.world.level.block.Blocks;
+@@ -17,7 +16,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * Replaces air with water.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class AirProcessor extends StructureProcessor {
+     public static final AirProcessor INSTANCE = new AirProcessor();
+     public static final MapCodec<AirProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/LegProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/LegProcessor.java
+index 3fd7d42..d9c4197 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/LegProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/LegProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betteroceanmonuments.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betteroceanmonuments.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+ import net.minecraft.server.level.WorldGenRegion;
+@@ -21,7 +20,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * Replaces blue stained-glass with dynamically generated legs below the monument.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class LegProcessor extends StructureProcessor {
+     public static final LegProcessor INSTANCE = new LegProcessor();
+     public static final MapCodec<LegProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+@@ -45,7 +43,7 @@ public class LegProcessor extends StructureProcessor {
+             while (mutable.getY() > levelReader.getMinY()
+                     && mutable.getY() < levelReader.getMaxY()
+                     && (currBlockState.isAir() || !levelReader.getFluidState(mutable).isEmpty())) {
+-                levelReader.getChunk(mutable).setBlockState(mutable, Blocks.PRISMARINE_BRICKS.defaultBlockState(), false);
++                levelReader.getChunk(mutable).setBlockState(mutable, Blocks.PRISMARINE_BRICKS.defaultBlockState(), 0);
+                 mutable.move(Direction.DOWN);
+                 currBlockState = levelReader.getBlockState(mutable);
+             }
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomDarkPrismarineSlabDecorationProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomDarkPrismarineSlabDecorationProcessor.java
+index 44cd695..4989fdb 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomDarkPrismarineSlabDecorationProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomDarkPrismarineSlabDecorationProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betteroceanmonuments.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betteroceanmonuments.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.level.LevelReader;
+@@ -21,7 +20,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * Randomly replaces blue concrete with top or bottom dark prismarine slab.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class RandomDarkPrismarineSlabDecorationProcessor extends StructureProcessor {
+     public static final RandomDarkPrismarineSlabDecorationProcessor INSTANCE = new RandomDarkPrismarineSlabDecorationProcessor();
+     public static final MapCodec<RandomDarkPrismarineSlabDecorationProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomOxidizationProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomOxidizationProcessor.java
+index 4ade329..871d586 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomOxidizationProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomOxidizationProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betteroceanmonuments.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betteroceanmonuments.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.level.LevelReader;
+@@ -19,7 +18,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * Randomizes the oxidization level of copper blocks.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class RandomOxidizationProcessor extends StructureProcessor {
+     public static final RandomOxidizationProcessor INSTANCE = new RandomOxidizationProcessor();
+     public static final MapCodec<RandomOxidizationProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomPrismarineSlabDecorationProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomPrismarineSlabDecorationProcessor.java
+index 5213a8f..2e8ef58 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomPrismarineSlabDecorationProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomPrismarineSlabDecorationProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betteroceanmonuments.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betteroceanmonuments.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.world.level.LevelReader;
+@@ -21,7 +20,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * Randomly replaces lime concrete with top or bottom prismarine slab.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class RandomPrismarineSlabDecorationProcessor extends StructureProcessor {
+     public static final RandomPrismarineSlabDecorationProcessor INSTANCE = new RandomPrismarineSlabDecorationProcessor();
+     public static final MapCodec<RandomPrismarineSlabDecorationProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomSpongeProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomSpongeProcessor.java
+index d6864bf..c04f51e 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomSpongeProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/RandomSpongeProcessor.java
+@@ -3,7 +3,6 @@ package com.yungnickyoung.minecraft.betteroceanmonuments.world.processor;
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betteroceanmonuments.module.StructureProcessorTypeModule;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.processor.ISafeWorldModifier;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.world.level.LevelReader;
+ import net.minecraft.world.level.block.Blocks;
+@@ -18,7 +17,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * Randomly replaces orange stained glass with sponge.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class RandomSpongeProcessor extends StructureProcessor implements ISafeWorldModifier {
+     public static final RandomSpongeProcessor INSTANCE = new RandomSpongeProcessor();
+     public static final MapCodec<RandomSpongeProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/SandGravelProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/SandGravelProcessor.java
+index ce5a2c5..9db08a0 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/SandGravelProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/SandGravelProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betteroceanmonuments.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betteroceanmonuments.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.world.level.LevelReader;
+ import net.minecraft.world.level.block.Blocks;
+@@ -17,7 +16,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * Replaces yellow stained glass with sand/gravel.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class SandGravelProcessor extends StructureProcessor {
+     public static final SandGravelProcessor INSTANCE = new SandGravelProcessor();
+     public static final MapCodec<SandGravelProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/SeagrassProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/SeagrassProcessor.java
+index dbf070a..d34571e 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/SeagrassProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/SeagrassProcessor.java
+@@ -3,7 +3,6 @@ package com.yungnickyoung.minecraft.betteroceanmonuments.world.processor;
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betteroceanmonuments.module.StructureProcessorTypeModule;
+ import com.yungnickyoung.minecraft.yungsapi.world.structure.processor.ISafeWorldModifier;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.world.level.LevelReader;
+ import net.minecraft.world.level.block.Blocks;
+@@ -20,7 +19,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * Replaces various slab placeholder blocks with seagrass.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class SeagrassProcessor extends StructureProcessor implements ISafeWorldModifier {
+     public static final SeagrassProcessor INSTANCE = new SeagrassProcessor();
+     public static final MapCodec<SeagrassProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/StructureVoidProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/StructureVoidProcessor.java
+index d18954f..f0c950d 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/StructureVoidProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/StructureVoidProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betteroceanmonuments.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betteroceanmonuments.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.world.level.LevelReader;
+ import net.minecraft.world.level.block.Blocks;
+@@ -19,7 +18,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * how the structure blends into terrain when building.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class StructureVoidProcessor extends StructureProcessor {
+     public static final StructureVoidProcessor INSTANCE = new StructureVoidProcessor();
+     public static final MapCodec<StructureVoidProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+diff --git a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/WaterlogProcessor.java b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/WaterlogProcessor.java
+index d43b5ba..2c52c3c 100644
+--- a/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/WaterlogProcessor.java
++++ b/Common/src/main/java/com/yungnickyoung/minecraft/betteroceanmonuments/world/processor/WaterlogProcessor.java
+@@ -2,7 +2,6 @@ package com.yungnickyoung.minecraft.betteroceanmonuments.world.processor;
+ 
+ import com.mojang.serialization.MapCodec;
+ import com.yungnickyoung.minecraft.betteroceanmonuments.module.StructureProcessorTypeModule;
+-import net.minecraft.MethodsReturnNonnullByDefault;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.server.level.WorldGenRegion;
+ import net.minecraft.world.level.ChunkPos;
+@@ -19,7 +18,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
+  * Waterlogs all waterloggable blocks.
+  */
+ @ParametersAreNonnullByDefault
+-@MethodsReturnNonnullByDefault
+ public class WaterlogProcessor extends StructureProcessor {
+     public static final WaterlogProcessor INSTANCE = new WaterlogProcessor();
+     public static final MapCodec<WaterlogProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+diff --git a/build.gradle b/build.gradle
+index 081b607..eb79b1a 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -1,5 +1,5 @@
+ plugins {
+-    id 'fabric-loom' version '1.10-SNAPSHOT' apply false
++    id 'fabric-loom' version '1.13-SNAPSHOT' apply false
+     id "org.jetbrains.gradle.plugin.idea-ext" version "1.1.7" // required for NeoGradle
+     id 'org.spongepowered.mixin' version '0.7-SNAPSHOT' apply false
+     id 'net.darkhax.curseforgegradle' version "${curseforgegradle_version}" apply false // curseforge publishing
+diff --git a/buildSrc/src/main/groovy/multiloader-common.gradle b/buildSrc/src/main/groovy/multiloader-common.gradle
+index 5f9f940..e245134 100644
+--- a/buildSrc/src/main/groovy/multiloader-common.gradle
++++ b/buildSrc/src/main/groovy/multiloader-common.gradle
+@@ -16,6 +16,7 @@ java {
+ }
+ 
+ repositories {
++    mavenLocal()
+     mavenCentral()
+     // https://docs.gradle.org/current/userguide/declaring_repositories.html#declaring_content_exclusively_found_in_one_repository
+     exclusiveContent {
+diff --git a/gradle.properties b/gradle.properties
+index a3d3f85..8f41052 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -11,15 +11,15 @@ mod_description=A complete redesign of Minecraft's ocean monuments!
+ mod_credits=Thanks so much to all my patrons!
+ license=LGPLv3
+ maven_group=com.yungnickyoung.minecraft.betteroceanmonuments
+-mc_version=1.21.4
+-mc_version_range=[1.21.4, 1.22)
+-mc_version_range_fabric=>=1.21.4
+-parchment_minecraft=1.21.4
+-parchment_version=2024.12.22
++mc_version=1.21.11
++mc_version_range=[1.21.11, 1.22)
++mc_version_range_fabric=>=1.21.11
++parchment_minecraft=1.21.11
++parchment_version=2025.12.20
+ 
+ # CurseForge/Modrinth Publishing
+ curseforgegradle_version=1.1.15
+-compatible_versions=1.21.4
++compatible_versions=1.21.11
+ curseforge_project_id_fabric=689252
+ curseforge_project_id_neoforge=689238
+ modrinth_project_id=3dT9sgt4
+@@ -29,10 +29,10 @@ debug_publish=true
+ yungsapi_version=5.4.0
+ 
+ # Fabric
+-fabric_version=0.112.2
+-fabric_loader_version=0.16.9
+-clothconfig_version_fabric=17.0.144
+-modmenu_version_fabric=13.0.3
++fabric_version=0.141.6
++fabric_loader_version=0.20.1
++clothconfig_version_fabric=21.11.153
++modmenu_version_fabric=17.0.1
+ 
+ # NeoForge
+ neoforge_version=21.4.124
+diff --git a/gradle/wrapper/gradle-wrapper.properties b/gradle/wrapper/gradle-wrapper.properties
+index d6e308a..3ae1e2f 100644
+--- a/gradle/wrapper/gradle-wrapper.properties
++++ b/gradle/wrapper/gradle-wrapper.properties
+@@ -1,5 +1,5 @@
+ distributionBase=GRADLE_USER_HOME
+ distributionPath=wrapper/dists
+-distributionUrl=https\://services.gradle.org/distributions/gradle-8.12-bin.zip
++distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+ zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
+diff --git a/settings.gradle b/settings.gradle
+index 704a07a..d81d59c 100644
+--- a/settings.gradle
++++ b/settings.gradle
+@@ -10,7 +10,7 @@ pluginManagement {
+                 }
+             }
+             filter {
+-                includeGroup("net.fabricmc")
++                includeGroupAndSubgroups("net.fabricmc")
+                 includeGroup("fabric-loom")
+             }
+         }
+-- 
+2.53.0.windows.2
+
