@@ -2,7 +2,9 @@
 # Needs: git and JDK 21 on PATH, internet. Output jars go to .\dist
 # Usage: .\build.ps1 [-Mods YUNGs-Menu-Tweaks,YUNGs-Extras]   (YUNGs-API is always built first)
 param([string[]]$Mods = @())
-$ErrorActionPreference = 'Stop'
+# 'Continue' on purpose: Windows PowerShell 5.1 turns harmless stderr output from git/gradle into fatal errors under 'Stop'.
+# Every native command below is checked explicitly via $LASTEXITCODE.
+$ErrorActionPreference = 'Continue'
 $Root = $PSScriptRoot; $Work = Join-Path $Root 'work'; $Dist = Join-Path $Root 'dist'
 New-Item -ItemType Directory -Force $Work, $Dist | Out-Null
 if (-not (Get-Command java -ErrorAction SilentlyContinue)) { throw 'JDK 21 not found on PATH' }
@@ -14,7 +16,7 @@ Get-Content (Join-Path $Root 'mods.txt') | Where-Object { $_ -and -not $_.Starts
   if (-not (Test-Path $patch)) { Write-Host "skip $name (no patch yet)"; return }
   Write-Host "=== $name"
   $dir = Join-Path $Work $name
-  if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }
+  if (Test-Path $dir) { Remove-Item -Recurse -Force $dir -ErrorAction Stop }
   git clone --quiet "https://github.com/$repo.git" $dir; if ($LASTEXITCODE) { throw "clone failed: $name" }
   git -C $dir checkout --quiet $commit; if ($LASTEXITCODE) { throw "checkout failed: $name" }
   git -C $dir apply --whitespace=nowarn $patch; if ($LASTEXITCODE) { throw "patch failed: $name" }
